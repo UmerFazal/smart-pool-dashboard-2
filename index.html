@@ -69,12 +69,13 @@
         }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex md:flex font-sans">
+<body class="bg-gray-100 min-h-screen flex font-sans">
 
-    <!-- FIXED: Removed md:flex here so it is hidden by default until JS is ready -->
+    <!-- Sidebar is hidden initially on ALL screens, shown by JS login -->
     <aside id="sidebar" class="w-64 bg-pool-dark shadow-2xl p-6 flex-col animate-fadeIn text-white hidden">
         <h1 class="text-3xl font-extrabold text-blue-300 border-b border-blue-700 pb-3 mb-1">Smart Pool</h1>
         
+        <!-- Credit remains here as requested -->
         <p class="text-xs text-blue-400 mb-6">
             Dashboard by <span class="font-bold text-blue-300">Syed Umer Fazal</span>
         </p>
@@ -113,8 +114,8 @@
         </button>
     </aside>
 
-    <!-- Mobile Header/Toggle (Visible on small screens) -->
-    <header id="mobile-header" class="bg-pool-dark p-4 flex justify-between items-center text-white md:hidden hidden">
+    <!-- Mobile Header/Toggle (Visible on small screens, hidden on desktop) -->
+    <header id="mobile-header" class="bg-pool-dark p-4 flex justify-between items-center text-white hidden md:hidden">
         <h1 class="text-xl font-extrabold text-blue-300">Smart Pool</h1>
         <button id="menu-toggle" onclick="toggleSidebar()" class="text-2xl hover:text-pool-accent transition">
             <i class="fa-solid fa-bars"></i>
@@ -411,11 +412,12 @@
             refreshInterval = null;
             updateCount = 0;
 
-            // FIX: Remove the desktop specific display class (md:flex) to ensure 'hidden' takes priority.
+            
             document.getElementById('sidebar').classList.add('hidden');
-            document.getElementById('sidebar').classList.remove('md:flex'); // <-- FIX
+            document.getElementById('sidebar').classList.remove('md:flex');
             
             document.getElementById('mobile-header').classList.add('hidden');
+            document.getElementById('mobile-header').classList.remove('md:hidden');
             
             
             document.getElementById('main-content').classList.remove('p-8');
@@ -881,7 +883,6 @@
         }
         
         
-
         function showModal(title, contentHTML, iconClass = 'fa-info-circle', iconColor = 'text-pool-accent', isReport = false) {
             document.getElementById('modal-title').textContent = title;
             
