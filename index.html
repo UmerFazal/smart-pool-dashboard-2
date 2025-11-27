@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Pool Dashboard</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'pool-dark': '#0f172a',
+                        'pool-light': '#1e3a8a',
+                        'pool-accent': '#2563eb',
+                        'status-ok': '#10b981',
+                        'status-warn': '#f97316',
+                        'status-alk': '#805ad5',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        .radial-gauge {
+            transition: stroke-dashoffset 2s ease-in-out;
+        }
+        .gauge-container {
+             display: flex;
+             flex-direction: column;
+             align-items: center;
+             justify-content: center;
+             text-align: center;
+             min-height: 200px;
+        }
+        @keyframes pulse-warning {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.7);
+            }
+            50% {
+                box-shadow: 0 0 0 8px rgba(249, 115, 22, 0);
+            }
+        }
+        .animate-pulse-warning {
+            animation: pulse-warning 2s infinite;
+        }
+
+        .glass-card {
+            background-color: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            border-left: 8px solid #2563eb;
+            transition: all 0.3s ease;
+        }
+
+        #custom-modal {
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex md:flex font-sans">
+
+    <!-- FIXED: Removed md:flex here so it is hidden by default until JS is ready -->
+    <aside id="sidebar" class="w-64 bg-pool-dark shadow-2xl p-6 flex-col animate-fadeIn text-white hidden">
+        <h1 class="text-3xl font-extrabold text-blue-300 border-b border-blue-700 pb-3 mb-1">Smart Pool</h1>
+        
+        <p class="text-xs text-blue-400 mb-6">
+            Dashboard by <span class="font-bold text-blue-300">Syed Umer Fazal</span>
+        </p>
+
+        <div class="flex-grow overflow-y-auto mb-6">
+            <nav id="sidebar-nav" class="space-y-3">
+                <a id="nav-dashboard" onclick="navigateTo('dashboard')" class="nav-item flex items-center p-3 rounded-lg bg-blue-700 hover:bg-blue-600 transition-all cursor-pointer">
+                    <i class="fa-solid fa-gauge text-xl"></i>
+                    <span class="ml-4 font-bold">Dashboard</span>
+                </a>
+                <a id="nav-sensors" onclick="navigateTo('sensors')" class="nav-item flex items-center p-3 rounded-lg hover:bg-blue-800 transition-all cursor-pointer text-blue-200">
+                    <i class="fa-solid fa-vials text-xl"></i>
+                    <span class="ml-4 font-medium">Sensors</span>
+                </a>
+                <a id="nav-reports" onclick="navigateTo('reports')" class="nav-item flex items-center p-3 rounded-lg hover:bg-blue-800 transition-all cursor-pointer text-blue-200">
+                    <i class="fa-solid fa-chart-bar text-xl"></i>
+                    <span class="ml-4 font-medium">Reports</span>
+                </a>
+                <a id="nav-maintenance" onclick="navigateTo('maintenance')" class="nav-item flex items-center p-3 rounded-lg hover:bg-blue-800 transition-all cursor-pointer text-blue-200">
+                    <i class="fa-solid fa-screwdriver-wrench text-xl"></i>
+                    <span class="ml-4 font-medium">Maintenance</span>
+                </a>
+            </nav>
+        </div>
+        
+        <div>
+             <p class="text-sm text-blue-400">System Status:</p>
+             <div id="system-status-banner" class="flex items-center mt-2 p-2 bg-orange-500 rounded-lg text-white font-semibold transition-all animate-pulse-warning">
+                <i class="fa-solid fa-triangle-exclamation mr-2"></i>
+                <span id="status-text">Warning Present</span>
+            </div>
+        </div>
+
+        <button onclick="logout()" class="w-full mt-4 flex items-center justify-center p-3 rounded-lg bg-red-600 hover:bg-red-700 transition-all font-bold">
+            <i class="fa-solid fa-sign-out-alt mr-2"></i> Log Out
+        </button>
+    </aside>
+
+    <!-- Mobile Header/Toggle (Visible on small screens) -->
+    <header id="mobile-header" class="bg-pool-dark p-4 flex justify-between items-center text-white md:hidden hidden">
+        <h1 class="text-xl font-extrabold text-blue-300">Smart Pool</h1>
+        <button id="menu-toggle" onclick="toggleSidebar()" class="text-2xl hover:text-pool-accent transition">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+    </header>
+
+    <main id="main-content" class="flex-1 p-8 space-y-8 animate-slideUp">
+        
+        
+        <div id="login-view" class="flex flex-col items-center justify-center h-screen w-full p-4 bg-gray-50 view">
+            <div class="w-full max-w-md glass-card p-8 rounded-2xl">
+                <div class="text-center mb-8">
+                    <i class="fa-solid fa-swimming-pool text-6xl text-pool-accent mb-3"></i>
+                    <h2 class="text-3xl font-extrabold text-gray-800">Smart Pool Login</h2>
+                </div>
+                
+                <form id="login-form" onsubmit="event.preventDefault(); handleLogin();" class="space-y-6 text-left">
+                    <div>
+                        <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
+                        <input type="text" id="username" required class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-pool-accent focus:border-pool-accent" placeholder="Enter username ">
+                    </div>
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+                        <div class="relative mt-1">
+                            <input type="password" id="password" required class="block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-pool-accent focus:border-pool-accent pr-10" placeholder="Enter password ">
+                            <button type="button" id="togglePassword" onclick="togglePasswordVisibility()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition">
+                                <i id="password-icon" class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <p id="login-message" class="text-red-500 text-center text-sm font-semibold hidden">Invalid credentials. </p>
+                    <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-pool-accent hover:bg-blue-700 transition-all">
+                        Sign In
+                    </button>
+                </form>
+            </div>
+            <p class="text-sm text-gray-500 mt-4">
+                Powered by <span class="font-semibold text-pool-accent">Syed Umer Fazal</span>
+            </p>
+            
+        </div>
+
+        
+        <div id="dashboard-view" class="view hidden space-y-10">
+            
+            <div class="p-4 bg-blue-100 border border-pool-accent text-pool-dark rounded-xl shadow-lg flex items-center">
+                <i class="fa-solid fa-swimming-pool text-3xl mr-4 text-pool-accent"></i>
+                <h2 class="text-3xl font-extrabold text-gray-800 m-0 p-0">Current Pool Health Overview (Dynamic Gauges)</h2>
+            </div>
+            
+
+            <div id="gauge-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6">
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="bg-white p-6 shadow-xl rounded-xl">
+                    <h3 class="text-xl font-semibold mb-4 text-pool-light">Weekly Temperature Trend</h3>
+                    <canvas id="tempChart"></canvas>
+                </div>
+
+                <div class="bg-white p-6 shadow-xl rounded-xl">
+                    <h3 class="text-xl font-semibold mb-4 text-pool-light">Current Chemical Distribution (Polar Area)</h3>
+                    <canvas id="pieChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="bg-white p-6 shadow-xl rounded-xl">
+                    <h3 class="text-xl font-semibold mb-4 text-pool-light">pH Level Fluctuation (Past 24 Hours) - Live</h3>
+                    <canvas id="phChart"></canvas>
+                </div>
+
+                <div class="bg-white p-6 shadow-xl rounded-xl">
+                    <h3 class="text-xl font-semibold mb-4 text-pool-light">Alkalinity vs. Hardness Balance</h3>
+                    <canvas id="balanceChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        
+        <div id="sensors-view" class="view hidden">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6">Live Sensor Data and Status</h2>
+
+            <div class="bg-white shadow-xl rounded-xl p-6">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Metric</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current Reading</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target Range</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Update</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sensors-data" class="bg-white divide-y divide-gray-200">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        
+        <div id="reports-view" class="view hidden">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6">Historical Reports and Analysis</h2>
+
+            <div class="grid grid-cols-3 gap-8">
+                <div class="bg-white p-6 shadow-xl rounded-xl border-t-4 border-blue-500">
+                    <h3 class="text-2xl font-semibold mb-3 text-blue-700 flex items-center"><i class="fa-solid fa-calendar-alt mr-3"></i> 30-Day Health Summary</h3>
+                    <p class="text-gray-600 mb-4">Overall pool quality was **Good**, but pH management required attention, with 95% compliance across all critical metrics.</p>
+                    <ul class="list-disc list-inside text-sm text-gray-700 space-y-1">
+                        <li>Average pH: 7.55 (High)</li>
+                        <li>Average Chlorine: 2.5 mg/L</li>
+                        <li>Temperature Consistency: High</li>
+                    </ul>
+                    <button onclick="showDetailedReportModal()" class="mt-4 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">View Detailed Report</button>
+                </div>
+
+                <div class="bg-white p-6 shadow-xl rounded-xl border-t-4 border-yellow-500">
+                    <h3 class="text-2xl font-semibold mb-3 text-yellow-700 flex items-center"><i class="fa-solid fa-flask-vial mr-3"></i> Chemical Usage Log</h3>
+                    <p class="text-gray-600 mb-4">Tracking consumption to optimize costs and minimize waste.</p>
+                    <ul class="list-disc list-inside text-sm text-gray-700 space-y-1">
+                        <li>Chlorine added: 6.2 kg (Increased)</li>
+                        <li>pH Up/Down usage: Moderate (Needs pH Down)</li>
+                        <li>Cost Savings (vs last month): 12%</li>
+                    </ul>
+                    <button onclick="downloadCSV()" class="mt-4 w-full bg-yellow-600 text-white py-2 rounded-lg hover:bg-yellow-700 transition">Download CSV</button>
+                </div>
+
+                <div class="bg-white p-6 shadow-xl rounded-xl border-t-4 border-green-500">
+                    <h3 class="text-2xl font-semibold mb-3 text-green-700 flex items-center"><i class="fa-solid fa-toolbox mr-3"></i> Maintenance & Service</h3>
+                    <p class="text-gray-600 mb-4">Record of all performed maintenance tasks.</p>
+                    <ul class="list-disc list-inside text-sm text-gray-700 space-y-1">
+                        <li>Last Filter Backwash: 3 days ago</li>
+                        <li>Pump Efficiency: 95%</li>
+                        <li>Next Service Check: 2024-10-15</li>
+                    </ul>
+                    <button onclick="scheduleNewTask()" class="mt-4 w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition">Schedule New Task</button>
+                </div>
+            </div>
+        </div>
+        
+
+        <div id="maintenance-view" class="view hidden">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6">Scheduled Maintenance & History</h2>
+
+            <div class="grid grid-cols-2 gap-8">
+                <div class="bg-white p-6 shadow-xl rounded-xl border-t-4 border-teal-500">
+                    <h3 class="text-2xl font-semibold mb-4 text-teal-700 flex items-center"><i class="fa-solid fa-calendar-check mr-3"></i> Upcoming Tasks</h3>
+                    
+                    <ul id="upcoming-tasks-list" class="space-y-4">
+                        <li class="p-3 bg-orange-50 rounded-lg flex justify-between items-center border-l-4 border-orange-500">
+                            <div>
+                                <p class="font-semibold">Balance pH Level</p>
+                                <p class="text-sm text-gray-500">Due: **IMMEDIATE**</p>
+                            </div>
+                            <span class="text-xs bg-orange-200 text-orange-800 px-3 py-1 rounded-full">Warning</span>
+                        </li>
+                        <li class="p-3 bg-teal-50 rounded-lg flex justify-between items-center border-l-4 border-teal-500">
+                            <div>
+                                <p class="font-semibold">Filter Backwash</p>
+                                <p class="text-sm text-gray-500">Due: 2025-11-20</p>
+                            </div>
+                            <span class="text-xs bg-teal-200 text-teal-800 px-3 py-1 rounded-full">High Priority</span>
+                        </li>
+                        <li class="p-3 bg-gray-50 rounded-lg flex justify-between items-center border-l-4 border-gray-300">
+                            <div>
+                                <p class="font-semibold">Skimmer Basket Cleaning</p>
+                                <p class="text-sm text-gray-500">Due: 2025-11-22</p>
+                            </div>
+                            <span class="text-xs bg-gray-200 text-gray-800 px-3 py-1 rounded-full">Routine</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="bg-white p-6 shadow-xl rounded-xl border-t-4 border-gray-500">
+                    <h3 class="text-2xl font-semibold mb-4 text-gray-700 flex items-center"><i class="fa-solid fa-history mr-3"></i> Recent History</h3>
+                    
+                    <form onsubmit="event.preventDefault(); logMaintenanceTask();" class="mb-6 space-y-2">
+                        <input type="text" id="task-input" required placeholder="Describe task (e.g., Added pH Down)" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-pool-accent focus:border-pool-accent text-sm">
+                        <button type="submit" class="w-full bg-pool-dark text-white py-2 rounded-lg hover:bg-gray-800 transition flex items-center justify-center text-sm font-semibold">
+                            <i class="fa-solid fa-plus mr-2"></i> Log New Maintenance
+                        </button>
+                    </form>
+                    
+                    <ul id="history-log" class="space-y-3 max-h-96 overflow-y-auto">
+                        <li class="border-b pb-2">
+                            <p class="font-semibold text-sm">Pump replaced</p>
+                            <p class="text-xs text-gray-500">Date: 2025-10-01 | Technician: Smith (Completed)</p>
+                        </li>
+                        <li class="border-b pb-2">
+                            <p class="font-semibold text-sm">Alkalinity adjustment</p>
+                            <p class="text-xs text-gray-500">Date: 2025-11-15 | User: System (Completed)</p>
+                        </li>
+                        <li>
+                            <p class="font-semibold text-sm">Main Drain cover check</p>
+                            <p class="text-xs text-gray-500">Date: 2025-11-14 | User: Self (Completed)</p>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+
+    </main>
+
+    
+    <div id="custom-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-lg">
+            <div class="flex items-center mb-4">
+                <i id="modal-icon" class="fa-solid fa-info-circle text-2xl text-pool-accent mr-3"></i>
+                <h3 id="modal-title" class="text-xl font-bold text-gray-800">Action Successful</h3>
+            </div>
+            <div id="modal-body-content" class="text-gray-600 mb-6">
+                <p id="modal-message">This is a generic message.</p>
+            </div>
+            <button onclick="closeModal()" class="w-full bg-pool-accent text-white py-2 rounded-lg hover:bg-blue-700 transition font-semibold">Close</button>
+        </div>
+    </div>
+
+
+    <script>
+        let chartsInitialized = false;
+        let isAuthenticated = false;
+        let refreshInterval = null;
+        let updateCount = 0;
+        let reportChartInstance = null;
+        
+        let phChartInstance = null;
+
+        
+        const VALID_USERNAME = 'umer';
+        const VALID_PASSWORD = '12345';
+        
+        
+
+        function handleLogin() {
+            
+            const usernameInput = document.getElementById('username').value.trim();
+            const passwordInput = document.getElementById('password').value.trim();
+            const messageElement = document.getElementById('login-message');
+
+            if (usernameInput === VALID_USERNAME && passwordInput === VALID_PASSWORD) {
+                isAuthenticated = true;
+                messageElement.classList.add('hidden');
+                
+                
+                document.getElementById('sidebar').classList.remove('hidden'); 
+                document.getElementById('sidebar').classList.add('md:flex');
+                document.getElementById('mobile-header').classList.remove('hidden');
+                document.getElementById('mobile-header').classList.add('md:hidden');
+                document.getElementById('main-content').classList.remove('p-0', 'm-0');
+                document.getElementById('main-content').classList.add('p-8');
+                
+                
+                renderGauges();
+                updateSidebarStatus();
+                startDataRefresh();
+                
+                navigateTo('dashboard');
+                initCharts();
+
+            } else {
+                isAuthenticated = false;
+                messageElement.classList.remove('hidden');
+                console.error("Login failed.");
+            }
+        }
+
+        
+        function togglePasswordVisibility() {
+            const passwordField = document.getElementById('password');
+            const toggleIcon = document.getElementById('password-icon');
+            
+            if (passwordField.type === 'password') {
+                passwordField.type = 'text';
+                toggleIcon.classList.remove('fa-eye');
+                toggleIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordField.type = 'password';
+                toggleIcon.classList.remove('fa-eye-slash');
+                toggleIcon.classList.add('fa-eye');
+            }
+        }
+        
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('hidden');
+            sidebar.classList.toggle('flex');
+            document.getElementById('main-content').classList.toggle('opacity-50');
+        }
+
+        function logout() {
+            isAuthenticated = false;
+            clearInterval(refreshInterval);
+            refreshInterval = null;
+            updateCount = 0;
+
+            // FIX: Remove the desktop specific display class (md:flex) to ensure 'hidden' takes priority.
+            document.getElementById('sidebar').classList.add('hidden');
+            document.getElementById('sidebar').classList.remove('md:flex'); // <-- FIX
+            
+            document.getElementById('mobile-header').classList.add('hidden');
+            
+            
+            document.getElementById('main-content').classList.remove('p-8');
+            document.getElementById('main-content').classList.add('p-0', 'm-0');
+            
+            document.querySelectorAll('.view').forEach(view => view.classList.add('hidden'));
+            document.getElementById('login-view').classList.remove('hidden');
+            
+            
+            document.getElementById('username').value = ''; 
+            document.getElementById('password').value = ''; 
+            document.getElementById('login-message').classList.add('hidden');
+        }
+
+        
+        function navigateTo(viewId) {
+            if (!isAuthenticated && viewId !== 'login') {
+                logout();
+                return;
+            }
+            
+            
+            closeModal(); 
+            
+            
+            document.querySelectorAll('.view').forEach(view => {
+                view.classList.add('hidden');
+            });
+
+            
+            const targetView = document.getElementById(`${viewId}-view`);
+            if (targetView) {
+                targetView.classList.remove('hidden');
+            }
+
+            
+            if (viewId !== 'login') {
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    item.classList.remove('bg-blue-700', 'hover:bg-blue-600', 'font-bold');
+                    item.classList.add('hover:bg-blue-800', 'text-blue-200', 'font-medium');
+                });
+                
+                const activeNav = document.getElementById(`nav-${viewId}`);
+                if (activeNav) {
+                    activeNav.classList.add('bg-blue-700', 'hover:bg-blue-600', 'font-bold');
+                    activeNav.classList.remove('hover:bg-blue-800', 'text-blue-200', 'font-medium');
+                }
+            }
+
+            
+            if (viewId === 'dashboard' && !chartsInitialized && isAuthenticated) {
+                initCharts();
+            }
+            
+            
+            if (viewId === 'sensors' && isAuthenticated) {
+                renderSensorTable();
+            }
+        }
+        
+        
+        const GAUGE_DATA = [
+            
+            { id: 'temp', label: 'Temperature', icon: 'fa-temperature-three-quarters', value: 29.5, max: 40, unit: '°C', status: 'Optimal', color: 'amber', text: 'amber-700', targetMin: 26, targetMax: 30, decimalPlaces: 1 },
+            { id: 'ph', label: 'pH Level', icon: 'fa-vial-circle-check', value: 7.4, max: 10, unit: '', status: 'Optimal', color: 'orange', text: 'orange-700', targetMin: 7.2, targetMax: 7.6, decimalPlaces: 2 },
+            { id: 'chlorine', label: 'Chlorine', icon: 'fa-spray-can-sparkles', value: 2.2, max: 5, unit: 'mg/L', status: 'Optimal', color: 'green', text: 'green-700', targetMin: 1.0, targetMax: 3.0, decimalPlaces: 2 },
+            { id: 'alkalinity', label: 'Alkalinity', icon: 'fa-flask', value: 95, max: 150, unit: 'ppm', status: 'Optimal', color: 'violet', text: 'violet-700', targetMin: 80, targetMax: 120, decimalPlaces: 0 },
+            { id: 'waterlevel', label: 'Water Level', icon: 'fa-water', value: 80, max: 100, unit: '%', status: 'Optimal', color: 'blue', text: 'blue-700', targetMin: 80, targetMax: 95, decimalPlaces: 0 }
+        ];
+        
+        function checkStatus(data) {
+            if (data.value >= data.targetMin && data.value <= data.targetMax) {
+                return 'Optimal';
+            }
+            return 'Warning';
+        }
+
+        function createGaugeHTML(data) {
+            const radius = 60;
+            const circumference = 2 * Math.PI * radius;
+            
+            const percentage = (data.value / data.max) * 100;
+            const offset = circumference - (circumference * (percentage > 100 ? 100 : percentage) / 100);
+            
+            const colorClass = data.color; 
+            const textClass = data.text;
+            const statusClass = data.status === 'Warning' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800';
+            
+            
+            let strokeHex = '#3b82f6';
+            if (colorClass === 'amber') strokeHex = '#f59e0b';
+            else if (colorClass === 'orange') strokeHex = '#f97316';
+            else if (colorClass === 'green') strokeHex = '#10b981';
+            else if (colorClass === 'violet') strokeHex = '#805ad5';
+
+            
+            const displayValue = data.value.toFixed(data.decimalPlaces);
+
+            return `
+                <div class="bg-white shadow-2xl p-6 rounded-xl border-t-4 border-${colorClass}-500 hover:shadow-3xl transition-all gauge-container">
+                    <h3 class="text-gray-500 font-semibold uppercase text-xs mb-3">${data.label}</h3>
+                    <div class="relative w-36 h-36 mx-auto">
+                        <svg class="w-full h-full transform -rotate-90" viewBox="0 0 130 130" xmlns="http://www.w3.org/2000/svg">
+                            
+                            <circle cx="65" cy="65" r="${radius}" fill="none" stroke="#e5e7eb" stroke-width="8" />
+                            
+                            <circle class="radial-gauge" 
+                                id="gauge-${data.id}"
+                                cx="65" cy="65" r="${radius}" 
+                                fill="none" 
+                                stroke="${strokeHex}" 
+                                stroke-width="8" 
+                                stroke-dasharray="${circumference}" 
+                                stroke-dashoffset="${circumference}" 
+                                stroke-linecap="round"
+                                data-offset="${offset}"
+                            />
+                        </svg>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                            <i class="fa-solid ${data.icon} text-2xl text-${colorClass}-500 mb-1"></i>
+                            <p class="text-2xl font-bold text-${textClass}">${displayValue}${data.unit}</p>
+                            <span class="text-xs font-medium ${statusClass} px-2 py-0.5 mt-1 rounded-full">${data.status}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderGauges() {
+            const container = document.getElementById('gauge-container');
+            if (!container) return;
+
+            
+            container.innerHTML = GAUGE_DATA.map(createGaugeHTML).join('');
+
+            
+            setTimeout(() => {
+                GAUGE_DATA.forEach(data => {
+                    const gaugeElement = document.getElementById(`gauge-${data.id}`);
+                    if (gaugeElement) {
+                        
+                        const radius = 60;
+                        const circumference = 2 * Math.PI * radius;
+                        const percentage = (data.value / data.max) * 100;
+                        const targetOffset = circumference - (circumference * (percentage > 100 ? 100 : percentage) / 100);
+
+                        gaugeElement.style.strokeDashoffset = targetOffset;
+                    }
+                });
+            }, 50); 
+        }
+
+        function renderSensorTable() {
+            const tableBody = document.getElementById('sensors-data');
+            if (!tableBody) return;
+            
+            
+            tableBody.innerHTML = '';
+            
+            
+            const currentTime = new Date().toLocaleTimeString();
+            
+            GAUGE_DATA.forEach((data, index) => {
+                const statusText = data.status;
+                const statusClass = statusText === 'Warning' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800';
+                
+                const displayValue = data.value.toFixed(data.decimalPlaces) + (data.unit ? ' ' + data.unit : '');
+                
+                const row = `
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap font-medium text-${data.color}-600 flex items-center"><i class="fa-solid ${data.icon} mr-3"></i> ${data.label}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-gray-900">${displayValue}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-gray-500">${data.targetMin}${data.unit} - ${data.targetMax}${data.unit}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${statusText}</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Updated @ ${currentTime}</td>
+                    </tr>
+                `;
+                tableBody.insertAdjacentHTML('beforeend', row);
+            });
+        }
+        
+        
+        
+        function startDataRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+            
+            refreshInterval = setInterval(updateAllValues, 30000); 
+            console.log("Data refresh started.");
+        }
+
+        function getRandomChange(currentValue, max, delta, decimalPlaces) {
+            
+            const change = (Math.random() - 0.5) * delta;
+            let newValue = currentValue + change;
+            
+            
+            newValue = Math.min(newValue, max * 1.05);
+            newValue = Math.max(newValue, 0);
+
+            return parseFloat(newValue.toFixed(decimalPlaces));
+        }
+
+        function updateAllValues() {
+            updateCount++;
+            let phValue = 0;
+
+            GAUGE_DATA.forEach(data => {
+                let delta = 0.5;
+                
+                
+                if (data.id === 'temp') delta = 0.1;
+                else if (data.id === 'ph') delta = 0.05;
+                else if (data.id === 'chlorine') delta = 0.1;
+                else if (data.id === 'alkalinity') delta = 5;
+                else if (data.id === 'waterlevel') delta = 1;
+
+                
+                data.value = getRandomChange(data.value, data.max, delta, data.decimalPlaces);
+                
+                
+                data.status = checkStatus(data);
+                
+                
+                if (data.id === 'ph') {
+                    phValue = data.value;
+                    if (data.status === 'Optimal') {
+                        data.color = 'green'; 
+                        data.text = 'green-700'; 
+                    } else if (data.status === 'Warning') {
+                        data.color = 'orange'; 
+                        data.text = 'orange-700';
+                    }
+                }
+            });
+
+            
+            renderGauges();
+            
+            
+            updateSidebarStatus();
+            
+            
+            if (phChartInstance) {
+                
+                const now = new Date();
+                const newLabel = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+                
+                if (phChartInstance.data.labels.length >= 8) {
+                    phChartInstance.data.labels.shift();
+                    phChartInstance.data.datasets[0].data.shift();
+                }
+
+                
+                phChartInstance.data.labels.push(newLabel);
+                phChartInstance.data.datasets[0].data.push(phValue);
+                
+                
+                phChartInstance.update();
+            }
+
+            
+            const sensorsView = document.getElementById('sensors-view');
+            if (sensorsView && !sensorsView.classList.contains('hidden')) {
+                renderSensorTable();
+            }
+        }
+        
+        function updateSidebarStatus() {
+            const banner = document.getElementById('system-status-banner');
+            const statusText = document.getElementById('status-text');
+            
+            const warningFound = GAUGE_DATA.some(data => data.status === 'Warning');
+            
+            banner.classList.remove('bg-green-600', 'bg-orange-500', 'animate-pulse-warning');
+            
+            if (warningFound) {
+                
+                banner.classList.add('bg-orange-500', 'animate-pulse-warning');
+                banner.querySelector('i').className = 'fa-solid fa-triangle-exclamation mr-2';
+                statusText.textContent = 'Warning Present';
+            } else {
+                
+                banner.classList.add('bg-green-600');
+                banner.querySelector('i').className = 'fa-solid fa-circle-check mr-2';
+                statusText.textContent = 'System Optimal';
+            }
+        }
+
+
+        
+        function initCharts() {
+            if (chartsInitialized) return;
+            chartsInitialized = true;
+
+            
+            const initialLabels = Array.from({ length: 8 }, (_, i) => {
+                const date = new Date();
+                date.setMinutes(date.getMinutes() - (7 - i) * 4);
+                return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+            });
+            
+            const initialPhData = [7.7, 7.7, 7.8, 7.8, 7.8, 7.8, 7.8, 7.8];
+
+
+            
+            const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+            
+            const tempCtx = document.getElementById('tempChart');
+            new Chart(tempCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Temperature (°C)',
+                        data: [28, 29, 29.5, 29, 28, 27.5, 29.5], 
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                        tension: 0.4,
+                        pointBackgroundColor: '#f59e0b',
+                    }]
+                },
+                options: { responsive: true, scales: { y: { beginAtZero: false } } }
+            });
+
+            
+            const pieCtx = document.getElementById('pieChart');
+            new Chart(pieCtx, {
+                type: 'polarArea',
+                data: {
+                    labels: ['Chlorine (Optimal)', 'pH (High)', 'Alkaline (Moderate)', 'Stabilizer'],
+                    datasets: [{
+                        data: [35, 35, 30, 20], 
+                        backgroundColor: ['#10b981', '#f97316', '#805ad5', '#f6ad55'],
+                        hoverOffset: 4
+                    }]
+                },
+                options: { 
+                    responsive: true,
+                    
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(0, 0, 0, 0.1)' },
+                            grid: { color: 'rgba(0, 0, 0, 0.1)' },
+                            suggestedMin: 0,
+                        }
+                    }
+                }
+            });
+            
+            
+            const phCtx = document.getElementById('phChart');
+            phChartInstance = new Chart(phCtx, {
+                type: 'line',
+                data: {
+                    labels: initialLabels,
+                    datasets: [{
+                        label: 'pH Level (Target: 7.4)',
+                        data: initialPhData,
+                        borderColor: '#f97316', 
+                        backgroundColor: 'rgba(249, 115, 22, 0.2)',
+                        tension: 0.2,
+                        borderWidth: 3,
+                        pointRadius: 5
+                    }]
+                },
+                options: { 
+                    responsive: true, 
+                    animation: false,
+                    scales: { 
+                        y: { 
+                            min: 7.0, 
+                            max: 8.0 
+                        } 
+                    },
+                    plugins: {
+                        legend: {
+                            display: false,
+                        }
+                    }
+                }
+            });
+
+            
+            const balanceCtx = document.getElementById('balanceChart');
+            new Chart(balanceCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Total Alkalinity (Moderate)', 'Calcium Hardness', 'Stabilizer (Cyanuric Acid)'],
+                    datasets: [{
+                        data: [40, 45, 15],
+                        backgroundColor: ['#805ad5', '#4fd1c5', '#f6ad55'],
+                        hoverOffset: 4
+                    }]
+                },
+                options: { responsive: true }
+            });
+        }
+        
+        
+        function initReportChart() {
+            if (reportChartInstance) {
+                reportChartInstance.destroy();
+            }
+
+            
+            const ctx = document.getElementById('reportTrendChartCanvas');
+            if (!ctx) return;
+            
+            
+            const reportLabels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+            const phData = [7.4, 7.6, 7.7, 7.5]; 
+            const chlorineData = [2.0, 2.5, 2.2, 2.1];
+
+            reportChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: reportLabels,
+                    datasets: [
+                        {
+                            label: 'Average pH Level',
+                            data: phData,
+                            backgroundColor: 'rgba(249, 115, 22, 0.8)',
+                            yAxisID: 'y1',
+                        },
+                        {
+                            label: 'Average Chlorine (mg/L)',
+                            data: chlorineData,
+                            backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                            yAxisID: 'y2',
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: { display: true, text: 'pH Level' },
+                            min: 7.0,
+                            max: 8.0
+                        },
+                        y2: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: { display: true, text: 'Chlorine (mg/L)' },
+                            grid: { drawOnChartArea: false },
+                            min: 0,
+                            max: 3.0
+                        }
+                    }
+                }
+            });
+        }
+        
+        
+
+        function showModal(title, contentHTML, iconClass = 'fa-info-circle', iconColor = 'text-pool-accent', isReport = false) {
+            document.getElementById('modal-title').textContent = title;
+            
+            const contentDiv = document.getElementById('modal-body-content');
+            contentDiv.innerHTML = contentHTML;
+            
+            const iconElement = document.getElementById('modal-icon');
+            iconElement.className = `fa-solid ${iconClass} text-2xl ${iconColor} mr-3`;
+            
+            document.getElementById('custom-modal').classList.remove('hidden');
+            
+            
+            if (isReport) {
+                
+                setTimeout(initReportChart, 50); 
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('custom-modal').classList.add('hidden');
+            
+            if (reportChartInstance) {
+                reportChartInstance.destroy();
+                reportChartInstance = null;
+            }
+        }
+        
+        
+        
+        function showDetailedReportModal() {
+            const reportDate = new Date().toLocaleDateString('en-US', { 
+                year: 'numeric', month: 'long', day: 'numeric' 
+            });
+            
+            const reportHTML = `
+                <p class="text-gray-600 mb-6 border-b pb-4">Report generated on: <span class="font-semibold">${reportDate}</span></p>
+
+                <div class="grid grid-cols-3 gap-3 mb-6 text-sm">
+                    <div class="bg-blue-50 p-3 rounded-lg">
+                        <p class="text-xs text-gray-500">Avg Temp</p>
+                        <p class="font-bold text-amber-600">28.9°C</p>
+                    </div>
+                    <div class="bg-blue-50 p-3 rounded-lg">
+                        <p class="text-xs text-gray-500">Compliance</p>
+                        <p class="font-bold text-green-600">95.4%</p>
+                    </div>
+                    <div class="bg-blue-50 p-3 rounded-lg">
+                        <p class="text-xs text-gray-500">Warning Events</p>
+                        <p class="font-bold text-orange-600">12 (pH)</p>
+                    </div>
+                </div>
+
+                <h3 class="text-base font-semibold mb-2 text-blue-700">Detailed pH & Chlorine Trend</h3>
+                <div style="height: 200px; width: 100%;">
+                    
+                    <canvas id="reportTrendChartCanvas"></canvas>
+                </div>
+            `;
+
+            showModal(
+                "30-Day Health Report",
+                reportHTML,
+                "fa-file-medical",
+                "text-blue-600",
+                true
+            );
+        }
+        
+        function downloadCSV() {
+            showModal(
+                "Download Initiated",
+                `<p class="mb-4">Chemical Usage Log data has been exported to a simulated CSV file and is ready for download.</p>
+                 <p class="text-sm font-semibold text-gray-500">Note: In a live system, this would trigger a file download via the server.</p>`,
+                "fa-download",
+                "text-yellow-600"
+            );
+        }
+
+        
+        function scheduleNewTask() {
+            showModal(
+                "Schedule Task",
+                `<p class="mb-4">The task scheduling interface is now open (simulated). You can set a date and time for a technician visit.</p>
+                 <p class="text-sm font-semibold text-gray-500">Simulating external scheduling service...</p>`,
+                "fa-calendar-plus",
+                "text-green-600"
+            );
+        }
+
+        
+        function logMaintenanceTask() {
+            const input = document.getElementById('task-input');
+            const taskDescription = input.value.trim();
+            const logList = document.getElementById('history-log');
+
+            if (!taskDescription) {
+                showModal(
+                    "Error", 
+                    "Please enter a description for the maintenance task.", 
+                    "fa-times-circle", 
+                    "text-red-600"
+                );
+                return;
+            }
+
+            const now = new Date();
+            const formattedDate = now.toLocaleDateString();
+            const formattedTime = now.toLocaleTimeString();
+
+            
+            const newItemHTML = `
+                <li class="border-b pb-2 animate-fadeIn">
+                    <p class="font-semibold text-sm">${taskDescription}</p>
+                    <p class="text-xs text-gray-500">Date: ${formattedDate} | Time: ${formattedTime} | User: Manual (Completed)</p>
+                </li>
+            `;
+            
+            
+            logList.insertAdjacentHTML('afterbegin', newItemHTML);
+            
+            
+            input.value = '';
+
+            
+            showModal(
+                "Maintenance Logged",
+                `<p class="mb-4">Successfully logged task: "${taskDescription}". It now appears in your recent history.</p>`,
+                "fa-check-circle",
+                "text-pool-accent"
+            );
+        }
+        
+        
+        window.onload = () => {
+            navigateTo('login');
+        };
+
+    </script>
+</body>
+</html>
