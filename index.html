@@ -67,11 +67,38 @@
         #custom-modal {
             z-index: 1000;
         }
+
+        /* === MOBILE FIXES: Ensure Sidebar is an overlay and content is fluid === */
+        #sidebar {
+            position: fixed; 
+            height: 100vh;
+            z-index: 50;
+            left: 0;
+            top: 0;
+            /* Use translate to slide in/out on mobile */
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-out;
+        }
+        /* When JS adds the 'open' class on mobile, slide it in */
+        #sidebar.open {
+            transform: translateX(0);
+            display: flex; /* Ensure display is flex when open */
+        }
+        /* On desktop, remove the fixed positioning and use the natural flow */
+        @media (min-width: 768px) {
+            #sidebar {
+                position: static;
+                transform: translateX(0);
+                flex-shrink: 0;
+            }
+        }
+        
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex font-sans">
+<!-- Replaced md:flex on body with the general flex needed for dashboard layout on desktop -->
+<body class="bg-gray-100 min-h-screen font-sans flex"> 
 
-    <!-- Sidebar is hidden initially on ALL screens, shown by JS login -->
+    <!-- Sidebar: 'hidden' by default, NO md:flex here now. JS controls the display property entirely. -->
     <aside id="sidebar" class="w-64 bg-pool-dark shadow-2xl p-6 flex-col animate-fadeIn text-white hidden">
         <h1 class="text-3xl font-extrabold text-blue-300 border-b border-blue-700 pb-3 mb-1">Smart Pool</h1>
         
@@ -122,7 +149,8 @@
         </button>
     </header>
 
-    <main id="main-content" class="flex-1 p-8 space-y-8 animate-slideUp">
+    <!-- Main content container now uses fluid width and responsive padding (p-4 mobile, p-8 desktop) -->
+    <main id="main-content" class="flex-1 w-full p-4 md:p-8 space-y-8 animate-slideUp">
         
         
         <div id="login-view" class="flex flex-col items-center justify-center h-screen w-full p-4 bg-gray-50 view">
@@ -355,16 +383,19 @@
             const usernameInput = document.getElementById('username').value.trim();
             const passwordInput = document.getElementById('password').value.trim();
             const messageElement = document.getElementById('login-message');
+            const sidebar = document.getElementById('sidebar');
 
             if (usernameInput === VALID_USERNAME && passwordInput === VALID_PASSWORD) {
                 isAuthenticated = true;
                 messageElement.classList.add('hidden');
                 
+                // Show sidebar and mobile header controls on successful login
+                // We add the 'flex' class only on desktop using the media query fix in CSS
+                sidebar.classList.remove('hidden'); 
+                sidebar.classList.add('flex');
                 
-                document.getElementById('sidebar').classList.remove('hidden'); 
-                document.getElementById('sidebar').classList.add('md:flex');
                 document.getElementById('mobile-header').classList.remove('hidden');
-                document.getElementById('mobile-header').classList.add('md:hidden');
+                
                 document.getElementById('main-content').classList.remove('p-0', 'm-0');
                 document.getElementById('main-content').classList.add('p-8');
                 
@@ -401,9 +432,13 @@
         
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
+            // On mobile, we toggle between hidden and open (transform: translateX(-100%) vs 0)
             sidebar.classList.toggle('hidden');
-            sidebar.classList.toggle('flex');
+            sidebar.classList.toggle('open'); 
+            
+            // Toggle opacity on main content to indicate sidebar is open
             document.getElementById('main-content').classList.toggle('opacity-50');
+            document.getElementById('main-content').classList.toggle('pointer-events-none'); // Disable clicks when sidebar is open
         }
 
         function logout() {
@@ -411,16 +446,17 @@
             clearInterval(refreshInterval);
             refreshInterval = null;
             updateCount = 0;
+            
+            const sidebar = document.getElementById('sidebar');
 
             
-            document.getElementById('sidebar').classList.add('hidden');
-            document.getElementById('sidebar').classList.remove('md:flex');
+            sidebar.classList.add('hidden');
+            sidebar.classList.remove('open', 'flex'); // Crucial: Remove 'flex' and 'open' classes
             
             document.getElementById('mobile-header').classList.add('hidden');
-            document.getElementById('mobile-header').classList.remove('md:hidden');
             
             
-            document.getElementById('main-content').classList.remove('p-8');
+            document.getElementById('main-content').classList.remove('p-8', 'opacity-50', 'pointer-events-none');
             document.getElementById('main-content').classList.add('p-0', 'm-0');
             
             document.querySelectorAll('.view').forEach(view => view.classList.add('hidden'));
@@ -442,6 +478,14 @@
             
             closeModal(); 
             
+            // On mobile, close sidebar immediately after clicking a link
+            if (window.innerWidth < 768) {
+                const sidebar = document.getElementById('sidebar');
+                if (sidebar.classList.contains('open')) {
+                    toggleSidebar();
+                }
+            }
+
             
             document.querySelectorAll('.view').forEach(view => {
                 view.classList.add('hidden');
