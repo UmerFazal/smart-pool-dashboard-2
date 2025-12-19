@@ -3,1067 +3,676 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Smart Pool Dashboard</title>
+    <title>Smart Pool | Pro Dashboard</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
                     colors: {
-                        'pool-dark': '#0f172a',
-                        'pool-light': '#1e3a8a',
-                        'pool-accent': '#2563eb',
-                        'status-ok': '#10b981',
-                        'status-warn': '#f97316',
-                        'status-alk': '#805ad5',
+                        'pool-blue': {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            900: '#0c4a6e',
+                        },
+                        'surface': '#ffffff',
+                        'background': '#f8fafc',
                     }
                 }
             }
         }
     </script>
-    
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
+
     <style>
-        .radial-gauge {
-            transition: stroke-dashoffset 2s ease-in-out;
-        }
-        .gauge-container {
-             display: flex;
-             flex-direction: column;
-             align-items: center;
-             justify-content: center;
-             text-align: center;
-             min-height: 200px;
-        }
-        @keyframes pulse-warning {
-            0%, 100% {
-                box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.7);
-            }
-            50% {
-                box-shadow: 0 0 0 8px rgba(249, 115, 22, 0);
-            }
-        }
-        .animate-pulse-warning {
-            animation: pulse-warning 2s infinite;
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
-        .glass-card {
-            background-color: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(5px);
-            -webkit-backdrop-filter: blur(5px);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            border-left: 8px solid #2563eb;
-            transition: all 0.3s ease;
-        }
-
-        #custom-modal {
-            z-index: 1000;
-        }
-
-        /* === MOBILE FIXES: Ensure Sidebar is an overlay and content is fluid === */
-        #sidebar {
-            position: fixed; 
-            height: 100vh;
-            z-index: 50;
-            left: 0;
-            top: 0;
-            /* Use translate to slide in/out on mobile */
-            transform: translateX(-100%);
-            transition: transform 0.3s ease-out;
-        }
-        /* When JS adds the 'open' class on mobile, slide it in */
-        #sidebar.open {
-            transform: translateX(0);
-            display: flex; /* Ensure display is flex when open */
-        }
-        /* On desktop, remove the fixed positioning and use the natural flow */
-        @media (min-width: 768px) {
-            #sidebar {
-                position: static;
-                transform: translateX(0);
-                flex-shrink: 0;
-            }
-        }
+        .view-transition { transition: opacity 0.3s ease, transform 0.3s ease; }
         
+        .premium-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .premium-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .pulse-dot {
+            position: relative;
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: #10b981;
+            border-radius: 50%;
+        }
+        .pulse-dot::after {
+            content: '';
+            position: absolute;
+            width: 100%; height: 100%;
+            top: 0; left: 0;
+            background-color: inherit;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            100% { transform: scale(3); opacity: 0; }
+        }
+
+        .gauge-svg { filter: drop-shadow(0 0 4px rgba(14, 165, 233, 0.2)); }
+        
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #0ea5e9; }
+        input:checked + .slider:before { transform: translateX(20px); }
     </style>
 </head>
-<!-- Replaced md:flex on body with the general flex needed for dashboard layout on desktop -->
-<body class="bg-gray-100 min-h-screen font-sans flex"> 
+<body class="bg-background text-slate-900 min-h-screen font-sans flex overflow-x-hidden">
 
-    <!-- Sidebar: 'hidden' by default, NO md:flex here now. JS controls the display property entirely. -->
-    <aside id="sidebar" class="w-64 bg-pool-dark shadow-2xl p-6 flex-col animate-fadeIn text-white hidden">
-        <h1 class="text-3xl font-extrabold text-blue-300 border-b border-blue-700 pb-3 mb-1">Smart Pool</h1>
-        
-        <!-- Credit remains here as requested -->
-        <p class="text-xs text-blue-400 mb-6">
-            Dashboard by <span class="font-bold text-blue-300">Syed Umer Fazal</span>
-        </p>
-
-        <div class="flex-grow overflow-y-auto mb-6">
-            <nav id="sidebar-nav" class="space-y-3">
-                <a id="nav-dashboard" onclick="navigateTo('dashboard')" class="nav-item flex items-center p-3 rounded-lg bg-blue-700 hover:bg-blue-600 transition-all cursor-pointer">
-                    <i class="fa-solid fa-gauge text-xl"></i>
-                    <span class="ml-4 font-bold">Dashboard</span>
-                </a>
-                <a id="nav-sensors" onclick="navigateTo('sensors')" class="nav-item flex items-center p-3 rounded-lg hover:bg-blue-800 transition-all cursor-pointer text-blue-200">
-                    <i class="fa-solid fa-vials text-xl"></i>
-                    <span class="ml-4 font-medium">Sensors</span>
-                </a>
-                <a id="nav-reports" onclick="navigateTo('reports')" class="nav-item flex items-center p-3 rounded-lg hover:bg-blue-800 transition-all cursor-pointer text-blue-200">
-                    <i class="fa-solid fa-chart-bar text-xl"></i>
-                    <span class="ml-4 font-medium">Reports</span>
-                </a>
-                <a id="nav-maintenance" onclick="navigateTo('maintenance')" class="nav-item flex items-center p-3 rounded-lg hover:bg-blue-800 transition-all cursor-pointer text-blue-200">
-                    <i class="fa-solid fa-screwdriver-wrench text-xl"></i>
-                    <span class="ml-4 font-medium">Maintenance</span>
-                </a>
-            </nav>
-        </div>
-        
-        <div>
-             <p class="text-sm text-blue-400">System Status:</p>
-             <div id="system-status-banner" class="flex items-center mt-2 p-2 bg-orange-500 rounded-lg text-white font-semibold transition-all animate-pulse-warning">
-                <i class="fa-solid fa-triangle-exclamation mr-2"></i>
-                <span id="status-text">Warning Present</span>
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-72 bg-pool-blue-900 text-white transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out hidden flex-col shadow-2xl">
+        <div class="p-8 flex items-center gap-3">
+            <div class="bg-pool-blue-500 p-2 rounded-xl">
+                <i class="fa-solid fa-droplet text-2xl"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-extrabold tracking-tight">SmartPool<span class="text-pool-blue-500">Pro</span></h1>
+                <p class="text-[10px] text-pool-blue-300 uppercase tracking-widest font-bold">Advanced Management</p>
             </div>
         </div>
 
-        <button onclick="logout()" class="w-full mt-4 flex items-center justify-center p-3 rounded-lg bg-red-600 hover:bg-red-700 transition-all font-bold">
-            <i class="fa-solid fa-sign-out-alt mr-2"></i> Log Out
-        </button>
+        <nav class="flex-1 px-6 space-y-2 mt-4">
+            <a onclick="navigateTo('dashboard')" id="nav-dashboard" class="nav-item flex items-center gap-4 px-4 py-3 rounded-xl bg-pool-blue-500 text-white font-semibold cursor-pointer group transition-all">
+                <i class="fa-solid fa-house text-lg group-hover:scale-110 transition-transform"></i>
+                Dashboard
+            </a>
+            <a onclick="navigateTo('sensors')" id="nav-sensors" class="nav-item flex items-center gap-4 px-4 py-3 rounded-xl text-pool-blue-200 hover:bg-white/10 hover:text-white font-medium cursor-pointer group transition-all">
+                <i class="fa-solid fa-microchip text-lg group-hover:scale-110 transition-transform"></i>
+                Sensors
+            </a>
+            <a onclick="navigateTo('reports')" id="nav-reports" class="nav-item flex items-center gap-4 px-4 py-3 rounded-xl text-pool-blue-200 hover:bg-white/10 hover:text-white font-medium cursor-pointer group transition-all">
+                <i class="fa-solid fa-chart-pie text-lg group-hover:scale-110 transition-transform"></i>
+                Reports
+            </a>
+            <a onclick="navigateTo('maintenance')" id="nav-maintenance" class="nav-item flex items-center gap-4 px-4 py-3 rounded-xl text-pool-blue-200 hover:bg-white/10 hover:text-white font-medium cursor-pointer group transition-all">
+                <i class="fa-solid fa-screwdriver-wrench text-lg group-hover:scale-110 transition-transform"></i>
+                Service
+            </a>
+        </nav>
+
+        <div class="px-8 mb-8 space-y-4">
+            <h4 class="text-[10px] font-bold text-pool-blue-400 uppercase tracking-widest">Tank Inventories</h4>
+            <div class="space-y-3">
+                <div>
+                    <div class="flex justify-between text-[10px] font-bold mb-1">
+                        <span>CHLORINE</span>
+                        <span>82%</span>
+                    </div>
+                    <div class="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+                        <div class="bg-emerald-400 h-full w-[82%]"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between text-[10px] font-bold mb-1">
+                        <span>PH MINUS (ACID)</span>
+                        <span>45%</span>
+                    </div>
+                    <div class="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+                        <div class="bg-amber-400 h-full w-[45%]"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-6 bg-white/5 m-6 rounded-2xl">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-pool-blue-300 uppercase">System Status</span>
+                <span class="pulse-dot" id="status-pulse"></span>
+            </div>
+            <p class="text-sm font-medium" id="status-text">All Systems Online</p>
+        </div>
+
+        <div class="p-6 border-t border-white/10 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-pool-blue-500 flex items-center justify-center font-bold">UF</div>
+                <div>
+                    <p class="text-sm font-bold">Umer Fazal</p>
+                    <p class="text-[10px] text-pool-blue-300">Administrator</p>
+                </div>
+            </div>
+            <button onclick="logout()" class="text-pool-blue-300 hover:text-white transition-colors">
+                <i class="fa-solid fa-arrow-right-from-bracket text-lg"></i>
+            </button>
+        </div>
     </aside>
 
-    <!-- Mobile Header/Toggle (Visible on small screens, hidden on desktop) -->
-    <header id="mobile-header" class="bg-pool-dark p-4 flex justify-between items-center text-white hidden md:hidden">
-        <h1 class="text-xl font-extrabold text-blue-300">Smart Pool</h1>
-        <button id="menu-toggle" onclick="toggleSidebar()" class="text-2xl hover:text-pool-accent transition">
-            <i class="fa-solid fa-bars"></i>
-        </button>
-    </header>
+    <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 hidden md:hidden"></div>
 
-    <!-- Main content container now uses fluid width and responsive padding (p-4 mobile, p-8 desktop) -->
-    <main id="main-content" class="flex-1 w-full p-4 md:p-8 space-y-8 animate-slideUp">
-        
-        
-        <div id="login-view" class="flex flex-col items-center justify-center h-screen w-full p-4 bg-gray-50 view">
-            <div class="w-full max-w-md glass-card p-8 rounded-2xl">
-                <div class="text-center mb-8">
-                    <i class="fa-solid fa-swimming-pool text-6xl text-pool-accent mb-3"></i>
-                    <h2 class="text-3xl font-extrabold text-gray-800">Smart Pool Login</h2>
-                </div>
-                
-                <form id="login-form" onsubmit="event.preventDefault(); handleLogin();" class="space-y-6 text-left">
-                    <div>
-                        <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
-                        <input type="text" id="username" required class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-pool-accent focus:border-pool-accent" placeholder="Enter username ">
+    <main id="main-content" class="flex-1 md:ml-72 min-h-screen flex flex-col w-full overflow-y-auto">
+        <header id="top-nav" class="bg-surface/80 backdrop-blur-md sticky top-0 z-30 px-8 py-4 border-b border-slate-200 flex items-center justify-between hidden">
+            <div class="flex items-center gap-4">
+                <button onclick="toggleSidebar()" class="md:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg">
+                    <i class="fa-solid fa-bars-staggered"></i>
+                </button>
+                <div class="flex flex-col">
+                    <h2 id="page-title" class="text-xl font-bold text-slate-800 leading-tight">Dashboard Overview</h2>
+                    <div class="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                        <i class="fa-solid fa-sun text-amber-500"></i> Sunny 31°C <span class="mx-1">•</span> <i class="fa-solid fa-droplet text-pool-blue-500"></i> Humidity 42%
                     </div>
-                    <div>
-                        <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
-                        <div class="relative mt-1">
-                            <input type="password" id="password" required class="block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-pool-accent focus:border-pool-accent pr-10" placeholder="Enter password ">
-                            <button type="button" id="togglePassword" onclick="togglePasswordVisibility()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition">
-                                <i id="password-icon" class="fa-solid fa-eye"></i>
-                            </button>
+                </div>
+            </div>
+            <div class="flex items-center gap-6">
+                <div class="hidden sm:flex items-center gap-2 text-slate-500 text-sm">
+                    <i class="fa-solid fa-clock"></i>
+                    <span id="current-time">12:00 PM</span>
+                </div>
+                <button onclick="showNotifications()" class="relative p-2 text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
+                    <i class="fa-solid fa-bell"></i>
+                    <span id="notif-badge" class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+                </button>
+            </div>
+        </header>
+
+        <div class="p-8 space-y-8 flex-grow">
+            <!-- LOGIN VIEW -->
+            <div id="login-view" class="fixed inset-0 z-[60] bg-pool-blue-900 flex items-center justify-center p-4">
+                <div class="absolute inset-0 opacity-20" style="background-image: radial-gradient(#fff 1px, transparent 1px); background-size: 40px 40px;"></div>
+                <div class="w-full max-w-md bg-surface p-10 rounded-[2.5rem] shadow-2xl relative">
+                    <div class="text-center mb-10">
+                        <div class="w-20 h-20 bg-pool-blue-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                            <i class="fa-solid fa-droplet text-4xl text-pool-blue-500"></i>
                         </div>
+                        <h2 class="text-3xl font-black text-slate-900">Welcome Back</h2>
+                        <p class="text-slate-500 mt-2 font-medium">Log in to manage your pool assets</p>
                     </div>
-                    <p id="login-message" class="text-red-500 text-center text-sm font-semibold hidden">Invalid credentials. </p>
-                    <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-pool-accent hover:bg-blue-700 transition-all">
-                        Sign In
-                    </button>
-                </form>
-            </div>
-            <p class="text-sm text-gray-500 mt-4">
-                Powered by <span class="font-semibold text-pool-accent">Syed Umer Fazal</span>
-            </p>
-            
-        </div>
-
-        
-        <div id="dashboard-view" class="view hidden space-y-10">
-            
-            <div class="p-4 bg-blue-100 border border-pool-accent text-pool-dark rounded-xl shadow-lg flex items-center">
-                <i class="fa-solid fa-swimming-pool text-3xl mr-4 text-pool-accent"></i>
-                <h2 class="text-3xl font-extrabold text-gray-800 m-0 p-0">Current Pool Health Overview (Dynamic Gauges)</h2>
-            </div>
-            
-
-            <div id="gauge-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6">
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div class="bg-white p-6 shadow-xl rounded-xl">
-                    <h3 class="text-xl font-semibold mb-4 text-pool-light">Weekly Temperature Trend</h3>
-                    <canvas id="tempChart"></canvas>
-                </div>
-
-                <div class="bg-white p-6 shadow-xl rounded-xl">
-                    <h3 class="text-xl font-semibold mb-4 text-pool-light">Current Chemical Distribution (Polar Area)</h3>
-                    <canvas id="pieChart"></canvas>
-                </div>
-            </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div class="bg-white p-6 shadow-xl rounded-xl">
-                    <h3 class="text-xl font-semibold mb-4 text-pool-light">pH Level Fluctuation (Past 24 Hours) - Live</h3>
-                    <canvas id="phChart"></canvas>
-                </div>
-
-                <div class="bg-white p-6 shadow-xl rounded-xl">
-                    <h3 class="text-xl font-semibold mb-4 text-pool-light">Alkalinity vs. Hardness Balance</h3>
-                    <canvas id="balanceChart"></canvas>
-                </div>
-            </div>
-        </div>
-
-        
-        <div id="sensors-view" class="view hidden">
-            <h2 class="text-3xl font-bold text-gray-800 mb-6">Live Sensor Data and Status</h2>
-
-            <div class="bg-white shadow-xl rounded-xl p-6">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Metric</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current Reading</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target Range</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Update</th>
-                        </tr>
-                    </thead>
-                    <tbody id="sensors-data" class="bg-white divide-y divide-gray-200">
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        
-        <div id="reports-view" class="view hidden">
-            <h2 class="text-3xl font-bold text-gray-800 mb-6">Historical Reports and Analysis</h2>
-
-            <div class="grid grid-cols-3 gap-8">
-                <div class="bg-white p-6 shadow-xl rounded-xl border-t-4 border-blue-500">
-                    <h3 class="text-2xl font-semibold mb-3 text-blue-700 flex items-center"><i class="fa-solid fa-calendar-alt mr-3"></i> 30-Day Health Summary</h3>
-                    <p class="text-gray-600 mb-4">Overall pool quality was **Good**, but pH management required attention, with 95% compliance across all critical metrics.</p>
-                    <ul class="list-disc list-inside text-sm text-gray-700 space-y-1">
-                        <li>Average pH: 7.55 (High)</li>
-                        <li>Average Chlorine: 2.5 mg/L</li>
-                        <li>Temperature Consistency: High</li>
-                    </ul>
-                    <button onclick="showDetailedReportModal()" class="mt-4 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">View Detailed Report</button>
-                </div>
-
-                <div class="bg-white p-6 shadow-xl rounded-xl border-t-4 border-yellow-500">
-                    <h3 class="text-2xl font-semibold mb-3 text-yellow-700 flex items-center"><i class="fa-solid fa-flask-vial mr-3"></i> Chemical Usage Log</h3>
-                    <p class="text-gray-600 mb-4">Tracking consumption to optimize costs and minimize waste.</p>
-                    <ul class="list-disc list-inside text-sm text-gray-700 space-y-1">
-                        <li>Chlorine added: 6.2 kg (Increased)</li>
-                        <li>pH Up/Down usage: Moderate (Needs pH Down)</li>
-                        <li>Cost Savings (vs last month): 12%</li>
-                    </ul>
-                    <button onclick="downloadCSV()" class="mt-4 w-full bg-yellow-600 text-white py-2 rounded-lg hover:bg-yellow-700 transition">Download CSV</button>
-                </div>
-
-                <div class="bg-white p-6 shadow-xl rounded-xl border-t-4 border-green-500">
-                    <h3 class="text-2xl font-semibold mb-3 text-green-700 flex items-center"><i class="fa-solid fa-toolbox mr-3"></i> Maintenance & Service</h3>
-                    <p class="text-gray-600 mb-4">Record of all performed maintenance tasks.</p>
-                    <ul class="list-disc list-inside text-sm text-gray-700 space-y-1">
-                        <li>Last Filter Backwash: 3 days ago</li>
-                        <li>Pump Efficiency: 95%</li>
-                        <li>Next Service Check: 2024-10-15</li>
-                    </ul>
-                    <button onclick="scheduleNewTask()" class="mt-4 w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition">Schedule New Task</button>
-                </div>
-            </div>
-        </div>
-        
-
-        <div id="maintenance-view" class="view hidden">
-            <h2 class="text-3xl font-bold text-gray-800 mb-6">Scheduled Maintenance & History</h2>
-
-            <div class="grid grid-cols-2 gap-8">
-                <div class="bg-white p-6 shadow-xl rounded-xl border-t-4 border-teal-500">
-                    <h3 class="text-2xl font-semibold mb-4 text-teal-700 flex items-center"><i class="fa-solid fa-calendar-check mr-3"></i> Upcoming Tasks</h3>
-                    
-                    <ul id="upcoming-tasks-list" class="space-y-4">
-                        <li class="p-3 bg-orange-50 rounded-lg flex justify-between items-center border-l-4 border-orange-500">
-                            <div>
-                                <p class="font-semibold">Balance pH Level</p>
-                                <p class="text-sm text-gray-500">Due: **IMMEDIATE**</p>
+                    <form onsubmit="event.preventDefault(); handleLogin();" class="space-y-6">
+                        <div class="space-y-2">
+                            <label class="text-sm font-bold text-slate-700 ml-1">Username</label>
+                            <input type="text" id="username" required class="w-full px-6 py-4 bg-slate-50 border-2 border-transparent focus:border-pool-blue-500 focus:bg-white rounded-2xl outline-none transition-all font-medium" placeholder="Enter username">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-sm font-bold text-slate-700 ml-1">Password</label>
+                            <div class="relative">
+                                <input type="password" id="password" required class="w-full px-6 py-4 bg-slate-50 border-2 border-transparent focus:border-pool-blue-500 focus:bg-white rounded-2xl outline-none transition-all font-medium" placeholder="••••••••">
+                                <button type="button" onclick="togglePass()" class="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 hover:text-pool-blue-500">
+                                    <i id="eye-icon" class="fa-solid fa-eye"></i>
+                                </button>
                             </div>
-                            <span class="text-xs bg-orange-200 text-orange-800 px-3 py-1 rounded-full">Warning</span>
-                        </li>
-                        <li class="p-3 bg-teal-50 rounded-lg flex justify-between items-center border-l-4 border-teal-500">
-                            <div>
-                                <p class="font-semibold">Filter Backwash</p>
-                                <p class="text-sm text-gray-500">Due: 2025-11-20</p>
-                            </div>
-                            <span class="text-xs bg-teal-200 text-teal-800 px-3 py-1 rounded-full">High Priority</span>
-                        </li>
-                        <li class="p-3 bg-gray-50 rounded-lg flex justify-between items-center border-l-4 border-gray-300">
-                            <div>
-                                <p class="font-semibold">Skimmer Basket Cleaning</p>
-                                <p class="text-sm text-gray-500">Due: 2025-11-22</p>
-                            </div>
-                            <span class="text-xs bg-gray-200 text-gray-800 px-3 py-1 rounded-full">Routine</span>
-                        </li>
-                    </ul>
-                </div>
-
-                <div class="bg-white p-6 shadow-xl rounded-xl border-t-4 border-gray-500">
-                    <h3 class="text-2xl font-semibold mb-4 text-gray-700 flex items-center"><i class="fa-solid fa-history mr-3"></i> Recent History</h3>
-                    
-                    <form onsubmit="event.preventDefault(); logMaintenanceTask();" class="mb-6 space-y-2">
-                        <input type="text" id="task-input" required placeholder="Describe task (e.g., Added pH Down)" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-pool-accent focus:border-pool-accent text-sm">
-                        <button type="submit" class="w-full bg-pool-dark text-white py-2 rounded-lg hover:bg-gray-800 transition flex items-center justify-center text-sm font-semibold">
-                            <i class="fa-solid fa-plus mr-2"></i> Log New Maintenance
+                        </div>
+                        <div id="login-error" class="hidden text-center p-3 bg-red-50 text-red-500 text-sm font-bold rounded-xl animate-bounce">
+                            Invalid credentials. Please try again.
+                        </div>
+                        <button type="submit" class="w-full py-5 bg-pool-blue-500 hover:bg-pool-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-pool-blue-500/30 transform active:scale-[0.98] transition-all">
+                            Sign In
                         </button>
                     </form>
-                    
-                    <ul id="history-log" class="space-y-3 max-h-96 overflow-y-auto">
-                        <li class="border-b pb-2">
-                            <p class="font-semibold text-sm">Pump replaced</p>
-                            <p class="text-xs text-gray-500">Date: 2025-10-01 | Technician: Smith (Completed)</p>
-                        </li>
-                        <li class="border-b pb-2">
-                            <p class="font-semibold text-sm">Alkalinity adjustment</p>
-                            <p class="text-xs text-gray-500">Date: 2025-11-15 | User: System (Completed)</p>
-                        </li>
-                        <li>
-                            <p class="font-semibold text-sm">Main Drain cover check</p>
-                            <p class="text-xs text-gray-500">Date: 2025-11-14 | User: Self (Completed)</p>
-                        </li>
-                    </ul>
+                </div>
+            </div>
+
+            <!-- DASHBOARD VIEW -->
+            <div id="dashboard-view" class="view hidden space-y-8 animate-fadeIn">
+                <div id="gauge-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-6"></div>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-2 space-y-8">
+                        <div class="premium-card p-8 rounded-[2rem]">
+                            <div class="flex items-center justify-between mb-8">
+                                <div>
+                                    <h3 class="text-lg font-bold text-slate-800">Water Stability Index</h3>
+                                    <p class="text-sm text-slate-500">pH vs ORP Real-time Correlation</p>
+                                </div>
+                            </div>
+                            <div class="h-64"><canvas id="stabilityChart"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="premium-card p-8 rounded-[2rem]">
+                        <h3 class="text-xl font-black text-slate-800 mb-6">Smart Controls</h3>
+                        <div class="space-y-6">
+                            <div class="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 bg-pool-blue-100 text-pool-blue-500 rounded-xl flex items-center justify-center"><i class="fa-solid fa-fan"></i></div>
+                                    <span class="font-bold text-slate-700">Main Pump</span>
+                                </div>
+                                <label class="switch"><input type="checkbox" id="ctrl-pump" checked><span class="slider"></span></label>
+                            </div>
+                            <div class="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 bg-amber-100 text-amber-500 rounded-xl flex items-center justify-center"><i class="fa-solid fa-fire"></i></div>
+                                    <span class="font-bold text-slate-700">Heater</span>
+                                </div>
+                                <label class="switch"><input type="checkbox" id="ctrl-heater"><span class="slider"></span></label>
+                            </div>
+                            <div class="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 bg-indigo-100 text-indigo-500 rounded-xl flex items-center justify-center"><i class="fa-solid fa-lightbulb"></i></div>
+                                    <span class="font-bold text-slate-700">RGB Lights</span>
+                                </div>
+                                <label class="switch"><input type="checkbox" id="ctrl-lights" checked><span class="slider"></span></label>
+                            </div>
+                            <div class="mt-4 pt-6 border-t border-slate-100">
+                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Quick Modes</p>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <button onclick="setSmartMode('party')" class="py-3 bg-emerald-50 text-emerald-600 rounded-xl font-bold text-xs hover:bg-emerald-100 transition-colors">PARTY MODE</button>
+                                    <button onclick="setSmartMode('eco')" class="py-3 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-xs hover:bg-indigo-100 transition-colors">ECO NIGHT</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SENSORS VIEW -->
+            <div id="sensors-view" class="view hidden space-y-6">
+                <div class="premium-card overflow-hidden rounded-[2rem]">
+                    <div class="p-8 border-b border-slate-100 flex items-center justify-between bg-white/50">
+                        <h3 class="text-lg font-bold">Detailed Sensor Readings</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-50/50">
+                                <tr>
+                                    <th class="px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Parameter</th>
+                                    <th class="px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Current</th>
+                                    <th class="px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Target</th>
+                                    <th class="px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Stability</th>
+                                    <th class="px-8 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sensor-tbody" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MAINTENANCE VIEW -->
+            <div id="maintenance-view" class="view hidden grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="premium-card p-8 rounded-[2rem]">
+                    <h3 class="text-xl font-bold mb-6 flex items-center gap-3">
+                        <i class="fa-solid fa-list-check text-pool-blue-500"></i>
+                        Active Maintenance Tasks
+                    </h3>
+                    <div class="space-y-4" id="task-list"></div>
+                </div>
+                <div class="premium-card p-8 rounded-[2rem]">
+                    <h3 class="text-xl font-bold mb-6 italic text-slate-800">Log New Maintenance</h3>
+                    <div class="space-y-4">
+                        <textarea id="task-input" rows="4" class="w-full p-6 bg-slate-50 rounded-2xl border-2 border-transparent focus:border-pool-blue-500 outline-none transition-all font-medium" placeholder="Describe the maintenance performed..."></textarea>
+                        <button onclick="addTask()" class="w-full py-4 bg-slate-900 text-white font-bold rounded-2xl hover:bg-slate-800 transition-colors">Record Maintenance</button>
+                    </div>
+                    <div class="mt-8 pt-8 border-t border-slate-100">
+                        <h4 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Recent History Log</h4>
+                        <div id="log-history" class="space-y-4"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- REPORTS VIEW -->
+            <div id="reports-view" class="view hidden space-y-8 animate-fadeIn">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div class="premium-card p-8 rounded-[2rem] border-t-4 border-pool-blue-500">
+                        <div class="w-12 h-12 bg-pool-blue-50 text-pool-blue-500 rounded-2xl flex items-center justify-center mb-6"><i class="fa-solid fa-calendar-check"></i></div>
+                        <h3 class="text-xl font-bold mb-4">30-Day Health Summary</h3>
+                        <button onclick="viewReport('summary')" class="w-full py-3 bg-slate-100 hover:bg-slate-200 rounded-xl font-bold transition-colors">View Analytics</button>
+                    </div>
+                    <div class="premium-card p-8 rounded-[2rem] border-t-4 border-emerald-500">
+                        <div class="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center mb-6"><i class="fa-solid fa-flask-vial"></i></div>
+                        <h3 class="text-xl font-bold mb-4">Chemical Usage Log</h3>
+                        <button onclick="viewReport('chemical')" class="w-full py-3 bg-slate-100 hover:bg-slate-200 rounded-xl font-bold transition-colors">View History</button>
+                    </div>
+                    <div class="premium-card p-8 rounded-[2rem] border-t-4 border-indigo-500">
+                        <div class="w-12 h-12 bg-indigo-50 text-indigo-500 rounded-2xl flex items-center justify-center mb-6"><i class="fa-solid fa-chart-line"></i></div>
+                        <h3 class="text-xl font-bold mb-4">Cost & Efficiency</h3>
+                        <button onclick="viewReport('efficiency')" class="w-full py-3 bg-slate-100 hover:bg-slate-200 rounded-xl font-bold transition-colors">View Efficiency</button>
+                    </div>
                 </div>
             </div>
         </div>
-
-
+        <footer id="footer" class="p-8 text-center text-slate-400 text-sm hidden">
+            &copy; 2025 SmartPool Pro Systems. Built by <span class="font-bold text-slate-600">Syed Umer Fazal</span>.
+        </footer>
     </main>
 
-    
-    <div id="custom-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-lg">
-            <div class="flex items-center mb-4">
-                <i id="modal-icon" class="fa-solid fa-info-circle text-2xl text-pool-accent mr-3"></i>
-                <h3 id="modal-title" class="text-xl font-bold text-gray-800">Action Successful</h3>
+    <div id="modal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 hidden">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-md"></div>
+        <div class="relative bg-surface w-full max-w-2xl p-10 rounded-[2.5rem] shadow-2xl scale-95 transition-all">
+            <div id="modal-icon-container" class="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-6 text-2xl">
+                <i id="modal-icon" class="fa-solid fa-circle-info"></i>
             </div>
-            <div id="modal-body-content" class="text-gray-600 mb-6">
-                <p id="modal-message">This is a generic message.</p>
+            <h3 id="modal-title" class="text-2xl font-black text-center text-slate-900 mb-2">Notice</h3>
+            <div id="modal-content-area" class="mt-4 max-h-[50vh] overflow-y-auto pr-2">
+                <p id="modal-message" class="text-slate-500 text-center font-medium leading-relaxed"></p>
             </div>
-            <button onclick="closeModal()" class="w-full bg-pool-accent text-white py-2 rounded-lg hover:bg-blue-700 transition font-semibold">Close</button>
+            <button onclick="closeModal()" class="mt-8 w-full py-4 bg-slate-900 text-white font-bold rounded-2xl hover:bg-slate-800 transition-all">Close</button>
         </div>
     </div>
 
-
     <script>
-        let chartsInitialized = false;
-        let isAuthenticated = false;
-        let refreshInterval = null;
-        let updateCount = 0;
-        let reportChartInstance = null;
-        
-        let phChartInstance = null;
+        const SENSORS = [
+            { id: 'temp', name: 'Water Temp', icon: 'fa-thermometer', value: 28.5, unit: '°C', min: 26, max: 30, color: '#f59e0b' },
+            { id: 'ph', name: 'pH Level', icon: 'fa-flask', value: 7.4, unit: 'pH', min: 7.2, max: 7.6, color: '#0ea5e9' },
+            { id: 'cl', name: 'Chlorine', icon: 'fa-vial', value: 2.2, unit: 'ppm', min: 1.5, max: 3.0, color: '#10b981' },
+            { id: 'orp', name: 'ORP Index', icon: 'fa-bolt-lightning', value: 720, unit: 'mV', min: 650, max: 800, color: '#f43f5e' },
+            { id: 'salt', name: 'Salt Level', icon: 'fa-cubes-stacked', value: 3100, unit: 'ppm', min: 2800, max: 3400, color: '#6366f1' },
+            { id: 'alk', name: 'Alkalinity', icon: 'fa-bottle-droplet', value: 95, unit: 'ppm', min: 80, max: 120, color: '#8b5cf6' },
+            { id: 'flow', name: 'Flow Rate', icon: 'fa-gauge-high', value: 45, unit: 'm³/h', min: 35, max: 55, color: '#ec4899' }
+        ];
 
-        
-        const VALID_USERNAME = 'umer';
-        const VALID_PASSWORD = '12345';
-        
-        
+        let activeTasks = [
+            { id: 1, title: 'Balance pH Level', deadline: 'Today, 4:00 PM', urgency: 'High' },
+            { id: 2, title: 'Check Salt Cell Efficiency', deadline: 'Today', urgency: 'Medium' },
+            { id: 3, title: 'Backwash Sand Filter', deadline: 'Tomorrow', urgency: 'High' },
+            { id: 4, title: 'Clean Skimmer Baskets', deadline: 'Tomorrow', urgency: 'Medium' },
+            { id: 5, title: 'Brush Pool Walls', deadline: 'Saturday', urgency: 'Medium' },
+            { id: 6, title: 'Inspect Pump Seal', deadline: 'Oct 28, 2025', urgency: 'Low' }
+        ];
+
+        let stabilityChart;
 
         function handleLogin() {
-            
-            const usernameInput = document.getElementById('username').value.trim();
-            const passwordInput = document.getElementById('password').value.trim();
-            const messageElement = document.getElementById('login-message');
-            const sidebar = document.getElementById('sidebar');
-
-            if (usernameInput === VALID_USERNAME && passwordInput === VALID_PASSWORD) {
-                isAuthenticated = true;
-                messageElement.classList.add('hidden');
-                
-                // Show sidebar and mobile header controls on successful login
-                // We add the 'flex' class only on desktop using the media query fix in CSS
-                sidebar.classList.remove('hidden'); 
-                sidebar.classList.add('flex');
-                
-                document.getElementById('mobile-header').classList.remove('hidden');
-                
-                document.getElementById('main-content').classList.remove('p-0', 'm-0');
-                document.getElementById('main-content').classList.add('p-8');
-                
-                
-                renderGauges();
-                updateSidebarStatus();
-                startDataRefresh();
-                
+            const u = document.getElementById('username').value;
+            const p = document.getElementById('password').value;
+            if(u === 'umer' && p === '12345') {
+                document.getElementById('login-view').classList.add('hidden');
+                document.getElementById('sidebar').classList.replace('hidden', 'flex');
+                document.getElementById('top-nav').classList.remove('hidden');
+                document.getElementById('footer').classList.remove('hidden');
                 navigateTo('dashboard');
-                initCharts();
-
+                initDashboard();
             } else {
-                isAuthenticated = false;
-                messageElement.classList.remove('hidden');
-                console.error("Login failed.");
+                const error = document.getElementById('login-error');
+                if (error) error.classList.remove('hidden');
+                setTimeout(() => error && error.classList.add('hidden'), 3000);
             }
         }
 
-        
-        function togglePasswordVisibility() {
-            const passwordField = document.getElementById('password');
-            const toggleIcon = document.getElementById('password-icon');
-            
-            if (passwordField.type === 'password') {
-                passwordField.type = 'text';
-                toggleIcon.classList.remove('fa-eye');
-                toggleIcon.classList.add('fa-eye-slash');
-            } else {
-                passwordField.type = 'password';
-                toggleIcon.classList.remove('fa-eye-slash');
-                toggleIcon.classList.add('fa-eye');
-            }
-        }
-        
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            // On mobile, we toggle between hidden and open (transform: translateX(-100%) vs 0)
-            sidebar.classList.toggle('hidden');
-            sidebar.classList.toggle('open'); 
-            
-            // Toggle opacity on main content to indicate sidebar is open
-            document.getElementById('main-content').classList.toggle('opacity-50');
-            document.getElementById('main-content').classList.toggle('pointer-events-none'); // Disable clicks when sidebar is open
+        function logout() { location.reload(); }
+
+        function togglePass() {
+            const p = document.getElementById('password');
+            const icon = document.getElementById('eye-icon');
+            if (!p || !icon) return;
+            p.type = p.type === 'password' ? 'text' : 'password';
+            icon.classList.toggle('fa-eye');
+            icon.classList.toggle('fa-eye-slash');
         }
 
-        function logout() {
-            isAuthenticated = false;
-            clearInterval(refreshInterval);
-            refreshInterval = null;
-            updateCount = 0;
-            
-            const sidebar = document.getElementById('sidebar');
-
-            
-            sidebar.classList.add('hidden');
-            sidebar.classList.remove('open', 'flex'); // Crucial: Remove 'flex' and 'open' classes
-            
-            document.getElementById('mobile-header').classList.add('hidden');
-            
-            
-            document.getElementById('main-content').classList.remove('p-8', 'opacity-50', 'pointer-events-none');
-            document.getElementById('main-content').classList.add('p-0', 'm-0');
-            
-            document.querySelectorAll('.view').forEach(view => view.classList.add('hidden'));
-            document.getElementById('login-view').classList.remove('hidden');
-            
-            
-            document.getElementById('username').value = ''; 
-            document.getElementById('password').value = ''; 
-            document.getElementById('login-message').classList.add('hidden');
-        }
-
-        
         function navigateTo(viewId) {
-            if (!isAuthenticated && viewId !== 'login') {
-                logout();
-                return;
-            }
-            
-            
-            closeModal(); 
-            
-            // On mobile, close sidebar immediately after clicking a link
-            if (window.innerWidth < 768) {
-                const sidebar = document.getElementById('sidebar');
-                if (sidebar.classList.contains('open')) {
-                    toggleSidebar();
-                }
-            }
-
-            
-            document.querySelectorAll('.view').forEach(view => {
-                view.classList.add('hidden');
+            const view = document.getElementById(viewId + '-view');
+            const nav = document.getElementById('nav-' + viewId);
+            if (!view) return;
+            document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
+            view.classList.remove('hidden');
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('bg-pool-blue-500', 'text-white', 'font-semibold');
+                item.classList.add('text-pool-blue-200', 'hover:bg-white/10', 'font-medium');
             });
-
-            
-            const targetView = document.getElementById(`${viewId}-view`);
-            if (targetView) {
-                targetView.classList.remove('hidden');
+            if (nav) {
+                nav.classList.remove('text-pool-blue-200', 'hover:bg-white/10', 'font-medium');
+                nav.classList.add('bg-pool-blue-500', 'text-white', 'font-semibold');
             }
-
-            
-            if (viewId !== 'login') {
-                document.querySelectorAll('.nav-item').forEach(item => {
-                    item.classList.remove('bg-blue-700', 'hover:bg-blue-600', 'font-bold');
-                    item.classList.add('hover:bg-blue-800', 'text-blue-200', 'font-medium');
-                });
-                
-                const activeNav = document.getElementById(`nav-${viewId}`);
-                if (activeNav) {
-                    activeNav.classList.add('bg-blue-700', 'hover:bg-blue-600', 'font-bold');
-                    activeNav.classList.remove('hover:bg-blue-800', 'text-blue-200', 'font-medium');
-                }
-            }
-
-            
-            if (viewId === 'dashboard' && !chartsInitialized && isAuthenticated) {
-                initCharts();
-            }
-            
-            
-            if (viewId === 'sensors' && isAuthenticated) {
-                renderSensorTable();
+            const titles = { dashboard: 'Dashboard Overview', sensors: 'Sensor Analytics', reports: 'Historical Data', maintenance: 'Maintenance & Service' };
+            const pageTitle = document.getElementById('page-title');
+            if (pageTitle && titles[viewId]) pageTitle.textContent = titles[viewId];
+            if (viewId === 'sensors') renderSensorTable();
+            if (viewId === 'maintenance') renderTasks();
+            if (window.innerWidth < 768) {
+                const s = document.getElementById('sidebar');
+                if(s && !s.classList.contains('-translate-x-full')) toggleSidebar();
             }
         }
-        
-        
-        const GAUGE_DATA = [
-            
-            { id: 'temp', label: 'Temperature', icon: 'fa-temperature-three-quarters', value: 29.5, max: 40, unit: '°C', status: 'Optimal', color: 'amber', text: 'amber-700', targetMin: 26, targetMax: 30, decimalPlaces: 1 },
-            { id: 'ph', label: 'pH Level', icon: 'fa-vial-circle-check', value: 7.4, max: 10, unit: '', status: 'Optimal', color: 'orange', text: 'orange-700', targetMin: 7.2, targetMax: 7.6, decimalPlaces: 2 },
-            { id: 'chlorine', label: 'Chlorine', icon: 'fa-spray-can-sparkles', value: 2.2, max: 5, unit: 'mg/L', status: 'Optimal', color: 'green', text: 'green-700', targetMin: 1.0, targetMax: 3.0, decimalPlaces: 2 },
-            { id: 'alkalinity', label: 'Alkalinity', icon: 'fa-flask', value: 95, max: 150, unit: 'ppm', status: 'Optimal', color: 'violet', text: 'violet-700', targetMin: 80, targetMax: 120, decimalPlaces: 0 },
-            { id: 'waterlevel', label: 'Water Level', icon: 'fa-water', value: 80, max: 100, unit: '%', status: 'Optimal', color: 'blue', text: 'blue-700', targetMin: 80, targetMax: 95, decimalPlaces: 0 }
-        ];
-        
-        function checkStatus(data) {
-            if (data.value >= data.targetMin && data.value <= data.targetMax) {
-                return 'Optimal';
-            }
-            return 'Warning';
+
+        function toggleSidebar() {
+            const s = document.getElementById('sidebar');
+            const o = document.getElementById('sidebar-overlay');
+            if (!s || !o) return;
+            s.classList.toggle('-translate-x-full');
+            o.classList.toggle('hidden');
         }
 
-        function createGaugeHTML(data) {
-            const radius = 60;
-            const circumference = 2 * Math.PI * radius;
-            
-            const percentage = (data.value / data.max) * 100;
-            const offset = circumference - (circumference * (percentage > 100 ? 100 : percentage) / 100);
-            
-            const colorClass = data.color; 
-            const textClass = data.text;
-            const statusClass = data.status === 'Warning' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800';
-            
-            
-            let strokeHex = '#3b82f6';
-            if (colorClass === 'amber') strokeHex = '#f59e0b';
-            else if (colorClass === 'orange') strokeHex = '#f97316';
-            else if (colorClass === 'green') strokeHex = '#10b981';
-            else if (colorClass === 'violet') strokeHex = '#805ad5';
-
-            
-            const displayValue = data.value.toFixed(data.decimalPlaces);
-
-            return `
-                <div class="bg-white shadow-2xl p-6 rounded-xl border-t-4 border-${colorClass}-500 hover:shadow-3xl transition-all gauge-container">
-                    <h3 class="text-gray-500 font-semibold uppercase text-xs mb-3">${data.label}</h3>
-                    <div class="relative w-36 h-36 mx-auto">
-                        <svg class="w-full h-full transform -rotate-90" viewBox="0 0 130 130" xmlns="http://www.w3.org/2000/svg">
-                            
-                            <circle cx="65" cy="65" r="${radius}" fill="none" stroke="#e5e7eb" stroke-width="8" />
-                            
-                            <circle class="radial-gauge" 
-                                id="gauge-${data.id}"
-                                cx="65" cy="65" r="${radius}" 
-                                fill="none" 
-                                stroke="${strokeHex}" 
-                                stroke-width="8" 
-                                stroke-dasharray="${circumference}" 
-                                stroke-dashoffset="${circumference}" 
-                                stroke-linecap="round"
-                                data-offset="${offset}"
-                            />
-                        </svg>
-                        <div class="absolute inset-0 flex flex-col items-center justify-center">
-                            <i class="fa-solid ${data.icon} text-2xl text-${colorClass}-500 mb-1"></i>
-                            <p class="text-2xl font-bold text-${textClass}">${displayValue}${data.unit}</p>
-                            <span class="text-xs font-medium ${statusClass} px-2 py-0.5 mt-1 rounded-full">${data.status}</span>
-                        </div>
-                    </div>
-                </div>
-            `;
+        function initDashboard() {
+            renderGauges();
+            initCharts();
+            startTime();
+            renderTasks();
+            startLiveUpdates();
         }
 
         function renderGauges() {
             const container = document.getElementById('gauge-container');
             if (!container) return;
+            container.innerHTML = SENSORS.map(s => `
+                <div class="premium-card p-6 rounded-[2rem] text-center flex flex-col items-center">
+                    <div class="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center mb-4 border border-slate-100" style="color: ${s.color}">
+                        <i class="fa-solid ${s.icon} text-lg"></i>
+                    </div>
+                    <p class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-1">${s.name}</p>
+                    <div class="relative w-32 h-32 flex items-center justify-center">
+                        <svg class="w-full h-full transform -rotate-90 gauge-svg" viewBox="0 0 100 100">
+                            <circle cx="50" cy="50" r="40" stroke="#f1f5f9" stroke-width="8" fill="transparent" />
+                            <circle id="circle-${s.id}" cx="50" cy="50" r="40" stroke="${s.color}" stroke-width="8" fill="transparent" 
+                                stroke-dasharray="251.2" stroke-dashoffset="251.2" stroke-linecap="round" class="transition-all duration-1000" />
+                        </svg>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center pt-2">
+                            <span class="text-2xl font-black text-slate-800 tracking-tighter">${s.value}</span>
+                            <span class="text-[10px] font-bold text-slate-400">${s.unit}</span>
+                        </div>
+                    </div>
+                    <div class="mt-4 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${s.value >= s.min && s.value <= s.max ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}">
+                        ${s.value >= s.min && s.value <= s.max ? 'Optimal' : 'Adjust'}
+                    </div>
+                </div>
+            `).join('');
 
-            
-            container.innerHTML = GAUGE_DATA.map(createGaugeHTML).join('');
-
-            
             setTimeout(() => {
-                GAUGE_DATA.forEach(data => {
-                    const gaugeElement = document.getElementById(`gauge-${data.id}`);
-                    if (gaugeElement) {
-                        
-                        const radius = 60;
-                        const circumference = 2 * Math.PI * radius;
-                        const percentage = (data.value / data.max) * 100;
-                        const targetOffset = circumference - (circumference * (percentage > 100 ? 100 : percentage) / 100);
-
-                        gaugeElement.style.strokeDashoffset = targetOffset;
-                    }
+                SENSORS.forEach(s => {
+                    const circle = document.getElementById(`circle-${s.id}`);
+                    const percent = Math.min((s.value / (s.max * 1.1)) * 100, 100);
+                    const offset = 251.2 - (251.2 * percent) / 100;
+                    if(circle) circle.style.strokeDashoffset = offset;
                 });
-            }, 50); 
+            }, 100);
         }
 
         function renderSensorTable() {
-            const tableBody = document.getElementById('sensors-data');
-            if (!tableBody) return;
-            
-            
-            tableBody.innerHTML = '';
-            
-            
-            const currentTime = new Date().toLocaleTimeString();
-            
-            GAUGE_DATA.forEach((data, index) => {
-                const statusText = data.status;
-                const statusClass = statusText === 'Warning' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800';
-                
-                const displayValue = data.value.toFixed(data.decimalPlaces) + (data.unit ? ' ' + data.unit : '');
-                
-                const row = `
-                    <tr>
-                        <td class="px-6 py-4 whitespace-nowrap font-medium text-${data.color}-600 flex items-center"><i class="fa-solid ${data.icon} mr-3"></i> ${data.label}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-gray-900">${displayValue}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-gray-500">${data.targetMin}${data.unit} - ${data.targetMax}${data.unit}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${statusText}</span>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Updated @ ${currentTime}</td>
-                    </tr>
-                `;
-                tableBody.insertAdjacentHTML('beforeend', row);
-            });
-        }
-        
-        
-        
-        function startDataRefresh() {
-            if (refreshInterval) {
-                clearInterval(refreshInterval);
-            }
-            
-            refreshInterval = setInterval(updateAllValues, 30000); 
-            console.log("Data refresh started.");
+            const tbody = document.getElementById('sensor-tbody');
+            if (!tbody) return;
+            tbody.innerHTML = SENSORS.map(s => `
+                <tr class="hover:bg-slate-50/50 transition-colors">
+                    <td class="px-8 py-6 flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center" style="color: ${s.color}">
+                            <i class="fa-solid ${s.icon}"></i>
+                        </div>
+                        <span class="font-bold text-slate-700">${s.name}</span>
+                    </td>
+                    <td class="px-8 py-6">
+                        <div class="flex items-baseline gap-1">
+                            <span class="text-3xl font-black text-slate-900 tracking-tight">${s.value}</span>
+                            <span class="text-sm font-bold text-slate-400">${s.unit}</span>
+                        </div>
+                    </td>
+                    <td class="px-8 py-6 text-slate-400 font-medium">${s.min} - ${s.max} ${s.unit}</td>
+                    <td class="px-8 py-6"><div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden"><div class="bg-pool-blue-500 h-full" style="width: ${Math.random() * 40 + 60}%"></div></div></td>
+                    <td class="px-8 py-6">
+                        <span class="inline-flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-bold ${s.value >= s.min && s.value <= s.max ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}">
+                            <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
+                            ${s.value >= s.min && s.value <= s.max ? 'Stable' : 'Alert'}
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
         }
 
-        function getRandomChange(currentValue, max, delta, decimalPlaces) {
-            
-            const change = (Math.random() - 0.5) * delta;
-            let newValue = currentValue + change;
-            
-            
-            newValue = Math.min(newValue, max * 1.05);
-            newValue = Math.max(newValue, 0);
-
-            return parseFloat(newValue.toFixed(decimalPlaces));
-        }
-
-        function updateAllValues() {
-            updateCount++;
-            let phValue = 0;
-
-            GAUGE_DATA.forEach(data => {
-                let delta = 0.5;
-                
-                
-                if (data.id === 'temp') delta = 0.1;
-                else if (data.id === 'ph') delta = 0.05;
-                else if (data.id === 'chlorine') delta = 0.1;
-                else if (data.id === 'alkalinity') delta = 5;
-                else if (data.id === 'waterlevel') delta = 1;
-
-                
-                data.value = getRandomChange(data.value, data.max, delta, data.decimalPlaces);
-                
-                
-                data.status = checkStatus(data);
-                
-                
-                if (data.id === 'ph') {
-                    phValue = data.value;
-                    if (data.status === 'Optimal') {
-                        data.color = 'green'; 
-                        data.text = 'green-700'; 
-                    } else if (data.status === 'Warning') {
-                        data.color = 'orange'; 
-                        data.text = 'orange-700';
-                    }
-                }
-            });
-
-            
-            renderGauges();
-            
-            
-            updateSidebarStatus();
-            
-            
-            if (phChartInstance) {
-                
-                const now = new Date();
-                const newLabel = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-
-                
-                if (phChartInstance.data.labels.length >= 8) {
-                    phChartInstance.data.labels.shift();
-                    phChartInstance.data.datasets[0].data.shift();
-                }
-
-                
-                phChartInstance.data.labels.push(newLabel);
-                phChartInstance.data.datasets[0].data.push(phValue);
-                
-                
-                phChartInstance.update();
-            }
-
-            
-            const sensorsView = document.getElementById('sensors-view');
-            if (sensorsView && !sensorsView.classList.contains('hidden')) {
-                renderSensorTable();
-            }
-        }
-        
-        function updateSidebarStatus() {
-            const banner = document.getElementById('system-status-banner');
-            const statusText = document.getElementById('status-text');
-            
-            const warningFound = GAUGE_DATA.some(data => data.status === 'Warning');
-            
-            banner.classList.remove('bg-green-600', 'bg-orange-500', 'animate-pulse-warning');
-            
-            if (warningFound) {
-                
-                banner.classList.add('bg-orange-500', 'animate-pulse-warning');
-                banner.querySelector('i').className = 'fa-solid fa-triangle-exclamation mr-2';
-                statusText.textContent = 'Warning Present';
-            } else {
-                
-                banner.classList.add('bg-green-600');
-                banner.querySelector('i').className = 'fa-solid fa-circle-check mr-2';
-                statusText.textContent = 'System Optimal';
-            }
-        }
-
-
-        
-        function initCharts() {
-            if (chartsInitialized) return;
-            chartsInitialized = true;
-
-            
-            const initialLabels = Array.from({ length: 8 }, (_, i) => {
-                const date = new Date();
-                date.setMinutes(date.getMinutes() - (7 - i) * 4);
-                return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-            });
-            
-            const initialPhData = [7.7, 7.7, 7.8, 7.8, 7.8, 7.8, 7.8, 7.8];
-
-
-            
-            const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
-            
-            const tempCtx = document.getElementById('tempChart');
-            new Chart(tempCtx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Temperature (°C)',
-                        data: [28, 29, 29.5, 29, 28, 27.5, 29.5], 
-                        borderColor: '#f59e0b',
-                        backgroundColor: 'rgba(245, 158, 11, 0.2)',
-                        tension: 0.4,
-                        pointBackgroundColor: '#f59e0b',
-                    }]
-                },
-                options: { responsive: true, scales: { y: { beginAtZero: false } } }
-            });
-
-            
-            const pieCtx = document.getElementById('pieChart');
-            new Chart(pieCtx, {
-                type: 'polarArea',
-                data: {
-                    labels: ['Chlorine (Optimal)', 'pH (High)', 'Alkaline (Moderate)', 'Stabilizer'],
-                    datasets: [{
-                        data: [35, 35, 30, 20], 
-                        backgroundColor: ['#10b981', '#f97316', '#805ad5', '#f6ad55'],
-                        hoverOffset: 4
-                    }]
-                },
-                options: { 
-                    responsive: true,
-                    
-                    scales: {
-                        r: {
-                            angleLines: { color: 'rgba(0, 0, 0, 0.1)' },
-                            grid: { color: 'rgba(0, 0, 0, 0.1)' },
-                            suggestedMin: 0,
-                        }
-                    }
-                }
-            });
-            
-            
-            const phCtx = document.getElementById('phChart');
-            phChartInstance = new Chart(phCtx, {
-                type: 'line',
-                data: {
-                    labels: initialLabels,
-                    datasets: [{
-                        label: 'pH Level (Target: 7.4)',
-                        data: initialPhData,
-                        borderColor: '#f97316', 
-                        backgroundColor: 'rgba(249, 115, 22, 0.2)',
-                        tension: 0.2,
-                        borderWidth: 3,
-                        pointRadius: 5
-                    }]
-                },
-                options: { 
-                    responsive: true, 
-                    animation: false,
-                    scales: { 
-                        y: { 
-                            min: 7.0, 
-                            max: 8.0 
-                        } 
-                    },
-                    plugins: {
-                        legend: {
-                            display: false,
-                        }
-                    }
-                }
-            });
-
-            
-            const balanceCtx = document.getElementById('balanceChart');
-            new Chart(balanceCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Total Alkalinity (Moderate)', 'Calcium Hardness', 'Stabilizer (Cyanuric Acid)'],
-                    datasets: [{
-                        data: [40, 45, 15],
-                        backgroundColor: ['#805ad5', '#4fd1c5', '#f6ad55'],
-                        hoverOffset: 4
-                    }]
-                },
-                options: { responsive: true }
-            });
-        }
-        
-        
-        function initReportChart() {
-            if (reportChartInstance) {
-                reportChartInstance.destroy();
-            }
-
-            
-            const ctx = document.getElementById('reportTrendChartCanvas');
-            if (!ctx) return;
-            
-            
-            const reportLabels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
-            const phData = [7.4, 7.6, 7.7, 7.5]; 
-            const chlorineData = [2.0, 2.5, 2.2, 2.1];
-
-            reportChartInstance = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: reportLabels,
-                    datasets: [
-                        {
-                            label: 'Average pH Level',
-                            data: phData,
-                            backgroundColor: 'rgba(249, 115, 22, 0.8)',
-                            yAxisID: 'y1',
-                        },
-                        {
-                            label: 'Average Chlorine (mg/L)',
-                            data: chlorineData,
-                            backgroundColor: 'rgba(16, 185, 129, 0.8)',
-                            yAxisID: 'y2',
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y1: {
-                            type: 'linear',
-                            display: true,
-                            position: 'left',
-                            title: { display: true, text: 'pH Level' },
-                            min: 7.0,
-                            max: 8.0
-                        },
-                        y2: {
-                            type: 'linear',
-                            display: true,
-                            position: 'right',
-                            title: { display: true, text: 'Chlorine (mg/L)' },
-                            grid: { drawOnChartArea: false },
-                            min: 0,
-                            max: 3.0
-                        }
-                    }
-                }
-            });
-        }
-        
-        
-        function showModal(title, contentHTML, iconClass = 'fa-info-circle', iconColor = 'text-pool-accent', isReport = false) {
-            document.getElementById('modal-title').textContent = title;
-            
-            const contentDiv = document.getElementById('modal-body-content');
-            contentDiv.innerHTML = contentHTML;
-            
-            const iconElement = document.getElementById('modal-icon');
-            iconElement.className = `fa-solid ${iconClass} text-2xl ${iconColor} mr-3`;
-            
-            document.getElementById('custom-modal').classList.remove('hidden');
-            
-            
-            if (isReport) {
-                
-                setTimeout(initReportChart, 50); 
-            }
-        }
-
-        function closeModal() {
-            document.getElementById('custom-modal').classList.add('hidden');
-            
-            if (reportChartInstance) {
-                reportChartInstance.destroy();
-                reportChartInstance = null;
-            }
-        }
-        
-        
-        
-        function showDetailedReportModal() {
-            const reportDate = new Date().toLocaleDateString('en-US', { 
-                year: 'numeric', month: 'long', day: 'numeric' 
-            });
-            
-            const reportHTML = `
-                <p class="text-gray-600 mb-6 border-b pb-4">Report generated on: <span class="font-semibold">${reportDate}</span></p>
-
-                <div class="grid grid-cols-3 gap-3 mb-6 text-sm">
-                    <div class="bg-blue-50 p-3 rounded-lg">
-                        <p class="text-xs text-gray-500">Avg Temp</p>
-                        <p class="font-bold text-amber-600">28.9°C</p>
-                    </div>
-                    <div class="bg-blue-50 p-3 rounded-lg">
-                        <p class="text-xs text-gray-500">Compliance</p>
-                        <p class="font-bold text-green-600">95.4%</p>
-                    </div>
-                    <div class="bg-blue-50 p-3 rounded-lg">
-                        <p class="text-xs text-gray-500">Warning Events</p>
-                        <p class="font-bold text-orange-600">12 (pH)</p>
-                    </div>
-                </div>
-
-                <h3 class="text-base font-semibold mb-2 text-blue-700">Detailed pH & Chlorine Trend</h3>
-                <div style="height: 200px; width: 100%;">
-                    
-                    <canvas id="reportTrendChartCanvas"></canvas>
-                </div>
-            `;
-
-            showModal(
-                "30-Day Health Report",
-                reportHTML,
-                "fa-file-medical",
-                "text-blue-600",
-                true
-            );
-        }
-        
-        function downloadCSV() {
-            showModal(
-                "Download Initiated",
-                `<p class="mb-4">Chemical Usage Log data has been exported to a simulated CSV file and is ready for download.</p>
-                 <p class="text-sm font-semibold text-gray-500">Note: In a live system, this would trigger a file download via the server.</p>`,
-                "fa-download",
-                "text-yellow-600"
-            );
-        }
-
-        
-        function scheduleNewTask() {
-            showModal(
-                "Schedule Task",
-                `<p class="mb-4">The task scheduling interface is now open (simulated). You can set a date and time for a technician visit.</p>
-                 <p class="text-sm font-semibold text-gray-500">Simulating external scheduling service...</p>`,
-                "fa-calendar-plus",
-                "text-green-600"
-            );
-        }
-
-        
-        function logMaintenanceTask() {
-            const input = document.getElementById('task-input');
-            const taskDescription = input.value.trim();
-            const logList = document.getElementById('history-log');
-
-            if (!taskDescription) {
-                showModal(
-                    "Error", 
-                    "Please enter a description for the maintenance task.", 
-                    "fa-times-circle", 
-                    "text-red-600"
-                );
+        function renderTasks() {
+            const list = document.getElementById('task-list');
+            if (!list) return;
+            if (activeTasks.length === 0) {
+                list.innerHTML = `<p class="text-slate-400 text-center py-8 font-medium italic">No active maintenance tasks.</p>`;
                 return;
             }
-
-            const now = new Date();
-            const formattedDate = now.toLocaleDateString();
-            const formattedTime = now.toLocaleTimeString();
-
-            
-            const newItemHTML = `
-                <li class="border-b pb-2 animate-fadeIn">
-                    <p class="font-semibold text-sm">${taskDescription}</p>
-                    <p class="text-xs text-gray-500">Date: ${formattedDate} | Time: ${formattedTime} | User: Manual (Completed)</p>
-                </li>
-            `;
-            
-            
-            logList.insertAdjacentHTML('afterbegin', newItemHTML);
-            
-            
-            input.value = '';
-
-            
-            showModal(
-                "Maintenance Logged",
-                `<p class="mb-4">Successfully logged task: "${taskDescription}". It now appears in your recent history.</p>`,
-                "fa-check-circle",
-                "text-pool-accent"
-            );
+            list.innerHTML = activeTasks.map(t => `
+                <div class="flex items-center justify-between p-5 bg-slate-50 rounded-2xl border border-slate-100 hover:border-pool-blue-200 transition-colors group animate-fadeIn">
+                    <div class="flex items-center gap-4">
+                        <button onclick="completeTask(${t.id})" class="w-6 h-6 rounded-lg border-2 border-slate-300 group-hover:border-pool-blue-50 transition-all flex items-center justify-center">
+                            <i class="fa-solid fa-check text-pool-blue-500 opacity-0 group-hover:opacity-50 text-xs"></i>
+                        </button>
+                        <div>
+                            <p class="font-bold text-slate-800">${t.title}</p>
+                            <p class="text-xs font-medium text-slate-400">${t.deadline}</p>
+                        </div>
+                    </div>
+                    <span class="text-[10px] font-black uppercase tracking-widest ${t.urgency === 'High' ? 'text-red-500' : t.urgency === 'Medium' ? 'text-amber-500' : 'text-slate-400'}">${t.urgency}</span>
+                </div>
+            `).join('');
         }
-        
-        
-        window.onload = () => {
-            navigateTo('login');
-        };
 
+        function completeTask(taskId) {
+            const taskIndex = activeTasks.findIndex(t => t.id === taskId);
+            if (taskIndex !== -1) {
+                const task = activeTasks[taskIndex];
+                logHistoryEntry(task.title + " (Completed)");
+                activeTasks.splice(taskIndex, 1);
+                renderTasks();
+                showModal("Task Completed", `"${task.title}" has been moved to recent logs.`, "fa-check-circle");
+            }
+        }
+
+        function logHistoryEntry(description) {
+            const history = document.getElementById('log-history');
+            if (!history) return;
+            const div = document.createElement('div');
+            div.className = "p-4 bg-slate-50 rounded-xl border border-slate-100 animate-fadeIn";
+            div.innerHTML = `<p class="text-sm font-bold text-slate-700">${description}</p>
+                             <p class="text-[10px] font-bold text-slate-400 mt-1 uppercase">Logged @ ${new Date().toLocaleTimeString()}</p>`;
+            history.prepend(div);
+        }
+
+        function addTask() {
+            const input = document.getElementById('task-input');
+            if(!input || !input.value.trim()) return;
+            const newTask = { id: Date.now(), title: input.value.trim(), deadline: 'Just added', urgency: 'Routine' };
+            activeTasks.push(newTask);
+            renderTasks();
+            input.value = '';
+            showModal("Maintenance Logged", "The task has been added to your active maintenance queue.", "fa-clock");
+        }
+
+        function showNotifications() {
+            const alerts = [
+                { title: 'Stability Warning', msg: 'pH levels slightly high in North wing.', time: '10m ago', color: 'text-amber-500' },
+                { title: 'Filter Alert', msg: 'Backwash scheduled for tomorrow.', time: '2h ago', color: 'text-pool-blue-500' },
+                { title: 'Tank Alert', msg: 'Acid levels below 50%.', time: '5h ago', color: 'text-red-500' }
+            ];
+            const contentHTML = `<div class="space-y-4">${alerts.map(a => `<div class="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-start gap-4"><div class="mt-1 w-2 h-2 rounded-full bg-current ${a.color}"></div><div class="flex-1"><div class="flex justify-between items-center mb-1"><p class="font-bold text-slate-800 text-sm">${a.title}</p><span class="text-[10px] text-slate-400 font-bold uppercase">${a.time}</span></div><p class="text-xs text-slate-500 leading-relaxed">${a.msg}</p></div></div>`).join('')}</div>`;
+            const badge = document.getElementById('notif-badge');
+            if(badge) badge.classList.add('hidden');
+            showModal("System Notifications", "", "fa-bell");
+            document.getElementById('modal-content-area').innerHTML = contentHTML;
+        }
+
+        function viewReport(type) {
+            const titles = { summary: '30-Day Health Summary', chemical: 'Chemical History', alerts: 'Alert History', efficiency: 'Analytics' };
+            const icons = { summary: 'fa-calendar-check', chemical: 'fa-flask-vial', alerts: 'fa-triangle-exclamation', efficiency: 'fa-chart-line' };
+            const iconColors = { summary: 'text-pool-blue-500', chemical: 'text-emerald-500', alerts: 'text-amber-500', efficiency: 'text-indigo-500' };
+            let contentHTML = "";
+            const dates = Array.from({length: 10}).map((_, i) => { const d = new Date(); d.setDate(d.getDate() - i); return d.toLocaleDateString(); });
+            if (type === 'summary') {
+                contentHTML = `<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8"><div class="p-6 bg-emerald-50 rounded-2xl text-center"><p class="text-[10px] font-black uppercase text-emerald-600 mb-1">Compliance</p><p class="text-3xl font-black text-slate-800">98.2%</p></div><div class="p-6 bg-pool-blue-50 rounded-2xl text-center"><p class="text-[10px] font-black uppercase text-pool-blue-600 mb-1">Stability</p><p class="text-3xl font-black text-slate-800">High</p></div><div class="p-6 bg-indigo-50 rounded-2xl text-center"><p class="text-[10px] font-black uppercase text-indigo-600 mb-1">Up Time</p><p class="text-3xl font-black text-slate-800">224h</p></div></div><div class="space-y-2">${dates.map(d => `<div class="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100"><span class="text-xs font-bold text-slate-500">${d}</span><div class="flex gap-4"><span class="text-xs font-bold text-slate-700">Stability: ${(95 + Math.random()*5).toFixed(1)}%</span></div><span class="text-[10px] font-black text-emerald-500">EXCELLENT</span></div>`).join('')}</div>`;
+            } else if (type === 'chemical') {
+                contentHTML = `<div class="space-y-4">${dates.slice(0, 5).map(d => `<div class="p-5 bg-slate-50 rounded-2xl border border-slate-100 flex justify-between items-center"><div><p class="font-bold text-slate-800">Chlorine Booster</p><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">${d}</p></div><span class="text-lg font-black text-emerald-600">${(100 + Math.random()*400).toFixed(0)}g</span></div>`).join('')}</div>`;
+            } else if (type === 'efficiency') {
+                contentHTML = `<div class="p-8 bg-indigo-50 rounded-[2rem] border border-indigo-100 mb-8 text-center"><h4 class="text-indigo-900 font-bold mb-2 uppercase text-xs">Estimated Monthly Spend</h4><p class="text-4xl font-black text-indigo-600 tracking-tighter">$42.15</p></div><div class="grid grid-cols-2 gap-4"><div class="p-6 bg-slate-50 rounded-2xl border border-slate-100 text-center"><p class="text-[10px] font-black text-slate-400 uppercase mb-1">Energy Use</p><p class="text-xl font-bold text-slate-800">112 kWh</p></div><div class="p-6 bg-slate-50 rounded-2xl border border-slate-100 text-center"><p class="text-[10px] font-black text-slate-400 uppercase mb-1">Run Time</p><p class="text-xl font-bold text-slate-800">28 Days</p></div></div>`;
+            }
+            const m = document.getElementById('modal');
+            const mt = document.getElementById('modal-title');
+            const mi = document.getElementById('modal-icon');
+            const marea = document.getElementById('modal-content-area');
+            const mcont = document.getElementById('modal-icon-container');
+            mt.textContent = titles[type];
+            mi.className = `fa-solid ${icons[type]}`;
+            mcont.className = `w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 text-2xl ${iconColors[type].replace('text-', 'bg-').replace('500', '50')} ${iconColors[type]}`;
+            marea.innerHTML = contentHTML;
+            m.classList.remove('hidden');
+            setTimeout(() => m.children[1].classList.replace('scale-95', 'scale-100'), 10);
+        }
+
+        function setSmartMode(mode) {
+            const pump = document.getElementById('ctrl-pump');
+            const heater = document.getElementById('ctrl-heater');
+            const lights = document.getElementById('ctrl-lights');
+            if (mode === 'party') {
+                pump.checked = true; heater.checked = true; lights.checked = true;
+                showModal("Party Mode Active", "All systems optimized: RGB Lights ON, Temperature boost initiated, and Pump flow increased.", "fa-glass-cheers");
+            } else if (mode === 'eco') {
+                pump.checked = true; heater.checked = false; lights.checked = false;
+                showModal("Eco Night Active", "Energy-saving mode enabled: RGB Lights OFF, Heater suspended, and Pump cycles optimized.", "fa-moon");
+            }
+        }
+
+        function initCharts() {
+            const stabEl = document.getElementById('stabilityChart');
+            if (!stabEl) return;
+            stabilityChart = new Chart(stabEl.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '23:59'],
+                    datasets: [
+                        { label: 'pH Level', data: [7.4, 7.35, 7.4, 7.5, 7.45, 7.4, 7.42], borderColor: '#0ea5e9', borderWidth: 3, tension: 0.4, yAxisID: 'y' },
+                        { label: 'ORP (mV)', data: [710, 715, 720, 705, 725, 730, 720], borderColor: '#f43f5e', borderWidth: 3, tension: 0.4, yAxisID: 'y1' }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { position: 'left', min: 7.0, max: 7.8 }, y1: { position: 'right', min: 600, max: 800, grid: { drawOnChartArea: false } } } }
+            });
+        }
+
+        function startTime() { setInterval(() => { const now = new Date(); const timeEl = document.getElementById('current-time'); if (timeEl) timeEl.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }, 1000); }
+
+        function startLiveUpdates() {
+            setInterval(() => {
+                SENSORS.forEach(s => {
+                    s.value = parseFloat((s.value + (Math.random() - 0.5) * (s.id === 'orp' ? 2 : 0.1)).toFixed(1));
+                    const circle = document.getElementById(`circle-${s.id}`);
+                    if(circle) {
+                        const percent = Math.min((s.value / (s.max * 1.1)) * 100, 100);
+                        circle.style.strokeDashoffset = 251.2 - (251.2 * percent) / 100;
+                    }
+                });
+            }, 5000);
+        }
+
+        function showModal(title, msg, icon = "fa-circle-info") {
+            const m = document.getElementById('modal');
+            const mt = document.getElementById('modal-title');
+            const mi = document.getElementById('modal-icon');
+            const marea = document.getElementById('modal-content-area');
+            const mcont = document.getElementById('modal-icon-container');
+            if (!m || !mt || !mi) return;
+            mt.textContent = title;
+            mcont.className = "w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-6 text-2xl";
+            marea.innerHTML = `<p class="text-slate-500 text-center font-medium leading-relaxed">${msg}</p>`;
+            mi.className = "fa-solid " + icon;
+            m.classList.remove('hidden');
+            setTimeout(() => m.children[1].classList.replace('scale-95', 'scale-100'), 10);
+        }
+
+        function closeModal() { const m = document.getElementById('modal'); if (!m) return; m.children[1].classList.replace('scale-100', 'scale-95'); setTimeout(() => m.classList.add('hidden'), 200); }
     </script>
 </body>
 </html>
