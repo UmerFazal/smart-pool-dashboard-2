@@ -2,10 +2,12 @@
   "name": "Smart Pool Pro",
   "short_name": "SmartPool",
   "description": "Professional Swimming Pool Monitoring and Control System",
-  "start_url": "index.html",
+  "start_url": "./index.html",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "minimal-ui"],
   "background_color": "#0c4a6e",
   "theme_color": "#0c4a6e",
+  "id": "smart-pool-pro-v1",
   "orientation": "portrait",
   "icons": [
     {
